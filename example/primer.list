@@ -1,0 +1,11 @@
+#primary_F	primary_R	type
+4.2-F	3.7-R	alpha
+SEA-F	SEA-R	alpha
+THAI-F	3.7-R	alpha
+SEA-F	3.7-R	alpha
+THAI-F	SEA-R	alpha
+4.2-F	SEA-R	alpha
+HBB-F	HBB-R	beta
+CHN-F	CHN-R	beta
+SEA-HPFH-F	HBB-R	beta
+HBB-F	CHN-R	beta
