@@ -118,7 +118,6 @@ fn anno_pattern_type(
             break;
         }
     }
-
     (patter_match, pattern_name, pattern_type, pattern_strand)
 }
 
@@ -217,7 +216,7 @@ pub fn splitter_receiver(rrx: Receiver<ReadInfo>, patternargs: &PatternArgs, thr
 		let rrx = rrx.clone();
 		let stx = stx.clone();
 		let patternargs = patternargs.clone();
-		let handle = thread::spawn(move || {
+		thread::spawn(move || {
             let mut read_count = 0;
 			for readinfo in rrx.iter() {
 				let mut matched_reads = readinfo;
@@ -228,7 +227,7 @@ pub fn splitter_receiver(rrx: Receiver<ReadInfo>, patternargs: &PatternArgs, thr
                 read_count += 1;
 			}
             let elapsed_time = start_time.elapsed();
-            info!("threads {} process {} reads. Time elapsed: {:?}",t,read_count, elapsed_time)
+            info!("threads {} process {} reads. Time elapsed: {:.4?}",t,read_count, elapsed_time)
 		});
 	};
 	srx

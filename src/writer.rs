@@ -3,89 +3,61 @@ use std::fs::File;
 use std::io::Write;
 use flate2::write::GzEncoder;
 use flate2::Compression;
+use log::info;
 use std::io::Result;
 use std::path::Path;
 use std::fs::create_dir_all;
 use crate::fastq::ReadInfo;
 use std::io::BufWriter;
-
+use std::thread;
+use flume::{Receiver, Sender, unbounded};
 pub struct WriterManager {
-    writers:  HashMap<String, BufWriter<GzEncoder<File>>>,
+    writers: HashMap<String, Sender<ReadInfo>>,
     outdir: String,
 }
 
 impl WriterManager {
     pub fn new(outdir: String) -> std::io::Result<Self> {
         create_dir_all(&outdir)?; // create the output directory if it does not exist
+        info!("Creating writer manager, start writing...");
         Ok(WriterManager {
             writers: HashMap::new(),
             outdir,
         })
     }
 
-    // pub async fn write(&mut self, readinfo: ReadInfo) -> Result<(), Box<dyn std::error::Error>> {
-    //     let file_key = readinfo.read_names.join("_");
-    //     if !self.writers.contains_key(&file_key) {
-    //         let file = File::create(Path::new(&self.outdir).join(format!("{}.fq.gz", file_key))).await?;
-    //         let encoder = GzEncoder::new(file, Compression::default());
-    //         let writer = BufWriter::with_capacity(10_000_000, encoder);
-    //         self.writers.insert(file_key.clone(), writer);
-    //     }                                                                            
-    //     let id = format!("{}%{}",readinfo.record.id(),file_key);
-    //     let seq = std::str::from_utf8(readinfo.record.seq()).expect("Not a valid UTF-8 sequence");
-    //     let qual = std::str::from_utf8(readinfo.record.qual()).expect("Not a valid UTF-8 sequence");
-    //     let record_str = format!("@{}\n{}\n+\n{}\n", id, seq, qual);
-        
-    //     if let Some(writer) = self.writers.get_mut(&file_key) {
-    //         writer.write_all(record_str.as_bytes()).await?;
-    //     }
-        
-    //     Ok(())
-    // }
     pub fn write(&mut self, readinfo: ReadInfo) -> Result<()> {
         let file_key = readinfo.read_names.join("_");
         if !self.writers.contains_key(&file_key) {
+            let (tx, rx) = unbounded();
             let file = File::create(Path::new(&self.outdir).join(format!("{}.fq.gz", file_key)))?;
             let encoder = GzEncoder::new(file, Compression::default());
             let writer = BufWriter::with_capacity(10_000_000, encoder);
-            self.writers.insert(file_key.clone(), writer);
-        }                                                                            
-        let id = format!("{}%{}",readinfo.record.id(),file_key);
-        let seq = std::str::from_utf8(readinfo.record.seq()).expect("Not a valid UTF-8 sequence");
-        let qual = std::str::from_utf8(readinfo.record.qual()).expect("Not a valid UTF-8 sequence");
-        let record_str = format!("@{}\n{}\n+\n{}\n", id, seq, qual);
-        write!(self.writers.get_mut(&file_key).unwrap(), "{}", record_str)?;
+            self.start_writing_thread(writer, rx);
+            self.writers.insert(file_key.clone(), tx);
+        }
+        self.writers.get(&file_key).unwrap().send(readinfo).expect("readinfo to writer send fail");
         Ok(())
     }
-    // pub fn multithread_write(&mut self, readinfo: ReadInfo) -> Result<()> {
-        //     let file_key = readinfo.read_names.join("_");
-        //     let outdir = self.outdir.clone();
-        //     let writer_manager = Arc::clone(&self.writers);
-        
-        //     if !writer_manager.lock().unwrap().contains_key(&file_key) {
-            //         let file = File::create(Path::new(&outdir).join(format!("{}.fq.gz", file_key))).unwrap();
-    //         let encoder = GzEncoder::new(file, Compression::default());
-    //         let writer = BufWriter::with_capacity(10_000_000, encoder);
-    //         writer_manager.lock().unwrap().insert(file_key.clone(), writer);
-    //     }
-    //     let writer_manager_cloned = Arc::clone(&writer_manager);
-    //     thread::spawn(move || {
-        //         let id = format!("{}%{}",readinfo.record.id(),file_key);
-        //         let seq = std::str::from_utf8(readinfo.record.seq()).expect("Not a valid UTF-8 sequence");
-    //         let qual = std::str::from_utf8(readinfo.record.qual()).expect("Not a valid UTF-8 sequence");
-    //         let record_str = format!("@{}\n{}\n+\n{}\n", id, seq, qual);
 
-    //         write!(writer_manager_cloned.lock().unwrap().get_mut(&file_key).unwrap(), "{}", record_str).unwrap();
-    //     });
-
-    //     Ok(())
-    // }
+    fn start_writing_thread(&self, mut writer: BufWriter<GzEncoder<File>>, rx: Receiver<ReadInfo>) {
+        thread::spawn(move || {
+            for readinfo in rx.iter() {
+                let id = format!("{}%{}", readinfo.record.id(), readinfo.read_names.join("_"));
+                let seq = std::str::from_utf8(readinfo.record.seq()).expect("Not a valid UTF-8 sequence");
+                let qual = std::str::from_utf8(readinfo.record.qual()).expect("Not a valid UTF-8 sequence");
+                let record_str = format!("@{}\n{}\n+\n{}\n", id, seq, qual);
+                write!(writer, "{}", record_str).unwrap();
+            }
+        });
+    }
 }
 
 
 pub fn write_log_file(logger: Vec<String>, outdir: &String) -> Result<()> {
     let dir_path = Path::new(outdir);
     create_dir_all(&dir_path)?;
+    info!("Writing logger to reads_log.gz");
     let file_path = dir_path.join("reads_log.gz");
     let file = File::create(file_path)?;
     let mut encoder = GzEncoder::new(file, Compression::default());

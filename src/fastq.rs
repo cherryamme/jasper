@@ -60,7 +60,7 @@ pub fn spawn_reader(file: PathBuf) -> Receiver<ReadInfo> {
             rtx.send(readinfo).expect("Error sending");
         }
         let elapsed_time = start_time.elapsed();
-        info!("Loading Reads data done! del reader threads. Time elapsed: {:?}", elapsed_time)
+        info!("Loading Reads data done! Time elapsed: {:.4?}", elapsed_time)
     });
     rrx
 }
@@ -129,6 +129,7 @@ impl ReadCounter {
     pub fn write_to_tsv(&self, outdir: &String) -> std::io::Result<()> {
         let dir_path = Path::new(outdir);
         create_dir_all(&dir_path)?;
+        info!("Writing split info to tsv");
     
         let file_path = dir_path.join("split_info.tsv");
         let mut file = File::create(file_path)?;
