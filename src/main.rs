@@ -24,7 +24,7 @@ fn main() {
     // info!("Create fq.gz reader handler");
     let rrx = fastq::spawn_reader(path);
     // info!("Create fq.gz spliter handler");
-    let (srx,handles) = splitter::splitter_receiver(rrx, &search_patterns, args.threads);
+    let srx = splitter::splitter_receiver(rrx, &search_patterns, args.threads);
     let mut logger: Vec<String> = Vec::new();
     let mut counter = fastq::ReadCounter::new();
     let mut writer_manager = WriterManager::new(args.outdir.clone()).expect("build writer manager fail");
@@ -48,8 +48,5 @@ fn main() {
     writer::write_log_file(logger, &args.outdir).expect("writer read_log fail");
     
     info!("Ending threads");
-    for handle in handles {
-        handle.join().expect("Error joining thread");
-    }
 
 }

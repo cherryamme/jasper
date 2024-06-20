@@ -210,9 +210,8 @@ pub fn splitter_vec(record: &Record, patternargs: &PatternArgs) -> Vec<SplitType
 
 
 
-pub fn splitter_receiver(rrx: Receiver<ReadInfo>, patternargs: &PatternArgs, threads: usize) -> (Receiver<ReadInfo>,Vec<thread::JoinHandle<()>>) {
+pub fn splitter_receiver(rrx: Receiver<ReadInfo>, patternargs: &PatternArgs, threads: usize) -> Receiver<ReadInfo> {
 	let (stx, srx) = flume::unbounded();
-	let mut handles = vec![];
 	for t in 0..threads {
         let start_time = Instant::now();
 		let rrx = rrx.clone();
@@ -231,8 +230,6 @@ pub fn splitter_receiver(rrx: Receiver<ReadInfo>, patternargs: &PatternArgs, thr
             let elapsed_time = start_time.elapsed();
             info!("threads {} process {} reads. Time elapsed: {:?}",t,read_count, elapsed_time)
 		});
-		handles.push(handle);
 	};
-	
-	(srx,handles)
+	srx
 }
