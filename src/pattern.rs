@@ -17,7 +17,7 @@ pub struct PatternArg {
     pub pattern_db: PatternDB,      // search db
     pub pattern_match: String,  // single or dual
     pub pattern_pos: bool,          // use position or not
-    pub pattern_shift: usize,       // >0 means shift to right, <0 means shift to left
+    // pub pattern_shift: usize,       // >0 means shift to right, <0 means shift to left
     pub pattern_errate: (f32, f32), // error rate for left and right
     pub pattern_maxdist: usize,     // max distance in matcher for left and right
 }
@@ -111,8 +111,8 @@ pub fn get_patterns(inputargs: &Args) -> PatternArgs {
         let patternarg = PatternArg {
             pattern_db: patterndb,
             pattern_match: inputargs.pattern_match[i].clone(),
-            pattern_pos: inputargs.pattern_pos.clone(),
-            pattern_shift: inputargs.pattern_shift[i].clone(),
+            pattern_pos: true,
+            // pattern_shift: inputargs.pattern_shift[i].clone(),
             pattern_errate: inputargs.pattern_errate[i].clone(),
             pattern_maxdist: inputargs.pattern_maxdist[i].clone(),
         };

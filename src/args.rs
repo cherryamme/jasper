@@ -13,7 +13,7 @@ fn styles() -> Styles {
 #[command(version, author, about, long_about = None, styles = styles())]
 pub struct Args {
     /// The path of input file
-    #[arg(short, long, num_args = 1..,value_delimiter = ' ', default_value = "/mnt/c/Users/Administrator/Desktop/rust_learn/amp_split/example/barcode21.fastq.gz")]
+    #[arg(short, long, num_args = 1..,value_delimiter = ' ', default_value = "example/barcode21.fastq.gz")]
     pub inputs: Vec<String>,
     /// The name of outdir
     #[arg(short, long, default_value = "outdir")]
@@ -24,24 +24,27 @@ pub struct Args {
     /// whether to plot the data
     // #[arg(short, long, default_value = "false")]
     // plot: bool,
-	#[arg(long = "db",default_value="/mnt/c/Users/Administrator/Desktop/rust_learn/amp_split/example/pattern.db")]
+	#[arg(long = "db",default_value="example/pattern.db")]
     pub pattern_db_file: String,
-	#[arg(short,long, num_args = 1..,value_delimiter = ' ', default_value="/mnt/c/Users/Administrator/Desktop/rust_learn/amp_split/example/primer.list /mnt/c/Users/Administrator/Desktop/rust_learn/amp_split/example/index.list")]
+	#[arg(short,long, num_args = 1..,value_delimiter = ' ', default_value="example/primer.list example/index.list")]
 	pub pattern_files: Vec<String>,
 
     #[arg(long, num_args = 1..,value_delimiter = ' ', default_value="dual dual single",value_parser = ["single","dual"])]
     pub pattern_match: Vec<String>,
 
-    #[arg(long, num_args = 1..,value_delimiter = ' ', default_value="1 2 3",value_parser = clap::value_parser!(u16).range(1..4))]
-    pub pattern_order: Vec<u16>,
+    // #[arg(long, num_args = 1..,value_delimiter = ' ', default_value="1 2 3",value_parser = clap::value_parser!(u16).range(1..4))]
+    // pub pattern_order: Vec<u16>,
 
     #[arg(long,value_delimiter = ',', default_value="400,400")]
     pub window_size: Vec<usize>,
     #[arg(long = "pos", help="detect pattern on previous patern pos")]
     pub pattern_pos: bool,
 
-    #[arg(long, num_args = 1..,value_delimiter = ' ', default_value="0 0 0")]
-    pub pattern_shift: Vec<usize>,
+    #[arg(long = "log_num", default_value = "100000", help="handle reads num log per num")]
+    pub log_num: u32,
+
+    // #[arg(long, num_args = 1..,value_delimiter = ' ', default_value="0 0 0")]
+    // pub pattern_shift: Vec<usize>,
     #[arg(long, num_args = 1..,value_delimiter = ' ', default_value="0.2,0.3 0.2,0.3 0.2,0.3",value_parser=errrate_validator,help="set a errate for multiple pattern use whiteblack,set left and right errate use comma, err = pattern_len x errate, errate range in <0-0.5>")]
     pub pattern_errate: Vec<(f32,f32)>,
     #[arg(long, num_args = 1..,value_delimiter = ',', default_value="4,4,4")]

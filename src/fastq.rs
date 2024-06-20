@@ -1,7 +1,7 @@
 use crate::splitter::SplitType;
 use bio::io::fastq::{Reader, Record};
 use flate2::read::MultiGzDecoder;
-use flume::{bounded, Receiver};
+use flume::{unbounded, Receiver};
 use log::info;
 use std::ffi::OsStr;
 use std::{
@@ -9,28 +9,10 @@ use std::{
     io::{BufReader, Read, Write},
     path::PathBuf,
 };
+use std::time::Instant;
 use std::fs::create_dir_all;
 use std::path::Path;
-const READER_CHANNEL_SIZE: usize = 100;
 const BUFSIZE: usize = 10 * 1024 * 1024;
-// pub fn loading_fastq(){
-//     let filename = String::from("/mnt/c/Users/Administrator/Desktop/rust_learn/jasper/example/barcode21.fastq.gz");  // 你的文件名列表
-//     let file = File::open(filename).expect("error");
-//     let decoder = MultiGzDecoder::new(file);
-//     let reader = BufReader::new(decoder);
-//     let mut fastq_reader = Reader::new(reader);
-//     let mut record = Record::new();
-// 	fastq_reader.read(&mut record).expect("Failed to parse record");
-//     while !record.is_empty() {
-// 		let check = record.check();
-// 		if check.is_err() {
-// 			panic!("I got a rubbish record!")
-// 		}
-// 		// check, whether seq is in the expected alphabet
-// 		println!("{:?}", record.id());
-// 		fastq_reader.read(&mut record).expect("Failed to parse record");
-// 	}
-// }
 
 fn is_gz(path: &PathBuf) -> bool {
     match path.extension().and_then(OsStr::to_str) {
@@ -40,8 +22,10 @@ fn is_gz(path: &PathBuf) -> bool {
 }
 
 pub fn spawn_reader(file: PathBuf) -> Receiver<ReadInfo> {
-    let (rtx, rrx) = bounded(READER_CHANNEL_SIZE);
+    // let (rtx, rrx) = bounded(READER_CHANNEL_SIZE);
+    let (rtx, rrx) = unbounded();
     std::thread::spawn(move || {
+        let start_time = Instant::now();
         // Open the file or standad input
         let raw_handle = if file.as_os_str() == "-" {
             Box::new(std::io::stdin()) as Box<dyn Read>
@@ -72,8 +56,11 @@ pub fn spawn_reader(file: PathBuf) -> Receiver<ReadInfo> {
                 read_names: Vec::new(),
                 read_name: Vec::new(),
             };
+            // TODO 增加一个过滤操作，按照长度进行过滤
             rtx.send(readinfo).expect("Error sending");
         }
+        let elapsed_time = start_time.elapsed();
+        info!("Loading Reads data done! del reader threads. Time elapsed: {:?}", elapsed_time)
     });
     rrx
 }

@@ -2,16 +2,19 @@ use crate::myers::myers_best;
 use crate::myers::SearchPattern;
 use std::collections::HashMap;
 use bio::io::fastq::Record;
+use log::info;
 use crate::pattern::{PatternArg,PatternArgs};
 use flume::Receiver;
 use std::cmp::min;
 use crate::fastq::ReadInfo;
 use std::thread;
+use std::time::Instant;
 
 #[derive(Debug)]
 struct ReadChunk {
     left: (usize, usize),
     right: (usize, usize),
+    pos_mut: bool,
 }
 
 
@@ -56,7 +59,7 @@ pub struct Matcher {
     status: bool,
 }
 
-fn find_matcher(pattern: &HashMap<String, String>, search_pattern: &mut SearchPattern, orient: &'static str) -> Matcher {
+fn find_matcher(pattern: &HashMap<String, String>, search_pattern: &mut SearchPattern, mut_pos: bool, orient: &'static str) -> Matcher {
     let mut matcher = Matcher {
         pattern: String::from(""),
         score: 99,
@@ -66,10 +69,17 @@ fn find_matcher(pattern: &HashMap<String, String>, search_pattern: &mut SearchPa
     };
     for (key, value) in pattern.iter() {
         search_pattern.pattern = value.as_bytes().to_vec();
-        if search_pattern.pattern_pos && orient == "left" {
-            search_pattern.start =  search_pattern.end.checked_sub(search_pattern.pattern.len() + 6).unwrap_or(0);
-        } else if search_pattern.pattern_pos && orient == "right" {
-            search_pattern.end = min(search_pattern.text_len, search_pattern.start + search_pattern.pattern.len() + 6 );
+        if mut_pos {
+            match orient {
+                "left" => {
+                    let sub_val = search_pattern.pattern.len() + 6;
+                    search_pattern.start = if sub_val > search_pattern.end { 0 } else { search_pattern.end - sub_val };
+                },
+                "right" => {
+                    search_pattern.end = min(search_pattern.text_len, search_pattern.start + search_pattern.pattern.len() + 6);
+                },
+                _ => {},
+            }
         }
         // debug!("search_pattern: {:?}", search_pattern);
         let result = myers_best(&*search_pattern);
@@ -142,13 +152,13 @@ fn splitter(record: &Record, readchunk: &ReadChunk, patternarg1: &PatternArg) ->
         end: readchunk.left.1,
         pattern_pos: patternarg1.pattern_pos,
     };
-    let left_matcher = find_matcher(&patterndb.f_patterns, &mut search_pattern,"left");
+    let left_matcher = find_matcher(&patterndb.f_patterns, &mut search_pattern, readchunk.pos_mut,"left");
     // search right pattern
     search_pattern.start = readchunk.right.0;
     search_pattern.end = readchunk.right.1;
     search_pattern.dist_ratio = patternarg1.pattern_errate.1;
     // debug!("search text is {:?}",String::from_utf8(search_pattern.text.clone()));
-    let right_matcher = find_matcher(&patterndb.r_patterns, &mut search_pattern,"right");
+    let right_matcher = find_matcher(&patterndb.r_patterns, &mut search_pattern,readchunk.pos_mut,"right");
     // right_matcher start and end need to be adjusted
     // right_matcher.ystart += readchunk.right.0;
     // right_matcher.yend += readchunk.right.0;
@@ -174,27 +184,24 @@ pub fn splitter_vec(record: &Record, patternargs: &PatternArgs) -> Vec<SplitType
     let mut readchunk = ReadChunk {
         left: (0, patternargs.window_size[0]),
         right: (record.seq().len() - patternargs.window_size[1], record.seq().len()),
+        pos_mut: false,
     };
     for patternarg in patternargs.pattern_vec.iter() {
-        // let pattern_db = &patternarg.pattern_db;
-        // let pattern_match = &patternarg.pattern_match;
-        // let pattern_pos = patternarg.pattern_pos;
-        // let pattern_shift = patternarg.pattern_shift;
-        // let pattern_errate = patternarg.pattern_errate;
-        // let pattern_maxdist = patternarg.pattern_maxdist;
         let split_type = splitter(&record, &readchunk, &patternarg);
         // debug!("split_type: {:?}", split_type);
-        if patternarg.pattern_pos {
+        if patternarg.pattern_pos && split_type.left_matcher.status && split_type.right_matcher.status {
             let left = split_type.left_matcher.ystart.clone();
+            // let left_bound = if left >= 30 { left - 30 } else { 0 };
             let right = split_type.right_matcher.yend.clone();
-        
-            if split_type.left_matcher.status {
-                readchunk.left = (left+3,left+3);
-            }
-        
-            if split_type.right_matcher.status {
-                readchunk.right = (right-3 ,right-3 );
-            }
+            // let right_bound: usize = if right <= record.seq().len() - 30 { right + 30 } else { record.seq().len() };
+
+            readchunk.left = (left+3,left+3);
+            readchunk.right = (right-3 ,right-3);
+            readchunk.pos_mut = true
+        }else {
+            readchunk.left = (0, patternargs.window_size[0]);
+            readchunk.right = (record.seq().len() - patternargs.window_size[1], record.seq().len());
+            readchunk.pos_mut = false;
         }
         split_type_vec.push(split_type);
     }
@@ -206,18 +213,23 @@ pub fn splitter_vec(record: &Record, patternargs: &PatternArgs) -> Vec<SplitType
 pub fn splitter_receiver(rrx: Receiver<ReadInfo>, patternargs: &PatternArgs, threads: usize) -> (Receiver<ReadInfo>,Vec<thread::JoinHandle<()>>) {
 	let (stx, srx) = flume::unbounded();
 	let mut handles = vec![];
-	for _ in 0..threads {
+	for t in 0..threads {
+        let start_time = Instant::now();
 		let rrx = rrx.clone();
 		let stx = stx.clone();
 		let patternargs = patternargs.clone();
 		let handle = thread::spawn(move || {
+            let mut read_count = 0;
 			for readinfo in rrx.iter() {
 				let mut matched_reads = readinfo;
 				matched_reads.split_type_vec =  splitter_vec(&matched_reads.record, &patternargs );
                 matched_reads.to_name(patternargs.pattern_match.clone());
 				// info!("read1: {}", matched_reads.to_tsv());
 				stx.send(matched_reads).expect("splitter send error");
+                read_count += 1;
 			}
+            let elapsed_time = start_time.elapsed();
+            info!("threads {} process {} reads. Time elapsed: {:?}",t,read_count, elapsed_time)
 		});
 		handles.push(handle);
 	};
