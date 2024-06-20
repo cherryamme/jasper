@@ -7,23 +7,21 @@ mod splitter;
 mod writer;
 use clap::Parser;
 use log::info;
-use std::path::PathBuf;
 use writer::WriterManager;
 use utils::ProcessInfo;
 
 fn main() {
+    std::env::set_var("RUST_LOG", "info");
     pretty_env_logger::init();
     let comands: Vec<String> = std::env::args().collect();
     let args = args::Args::parse();
-    info!("{:?}", comands);
+    info!("Run Command: {:?}", comands);
     // debug!("{:?}", args);
     let search_patterns = pattern::get_patterns(&args);
     // debug!("{:?}", search_patterns);
-    // let reader = fastq::FastqFilesReader::new(args.inputs.clone());
-    let path = PathBuf::from(&args.inputs[0]);
     let start_time = std::time::Instant::now();
     // info!("Create fq.gz reader handler");
-    let rrx = fastq::spawn_reader(path);
+    let rrx = fastq::spawn_reader(args.inputs);
     // info!("Create fq.gz spliter handler");
     let srx = splitter::splitter_receiver(rrx, &search_patterns, args.threads);
     let mut logger: Vec<String> = Vec::new();

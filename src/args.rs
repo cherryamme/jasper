@@ -13,7 +13,7 @@ fn styles() -> Styles {
 #[command(version, author, about, long_about = None, styles = styles())]
 pub struct Args {
     /// The path of input file
-    #[arg(short, long, num_args = 1..,value_delimiter = ' ', default_value = "example/barcode21.fastq.gz")]
+    #[arg(short, long, num_args = 1..,value_delimiter = ' ')]
     pub inputs: Vec<String>,
     /// The name of outdir
     #[arg(short, long, default_value = "outdir")]

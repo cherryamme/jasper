@@ -1,7 +1,7 @@
 use crate::splitter::SplitType;
 use bio::io::fastq::{Reader, Record};
 use flate2::read::MultiGzDecoder;
-use flume::{unbounded, Receiver};
+use flume::{unbounded, Sender, Receiver};
 use log::info;
 use std::ffi::OsStr;
 use std::{
@@ -21,49 +21,65 @@ fn is_gz(path: &PathBuf) -> bool {
     }
 }
 
-pub fn spawn_reader(file: PathBuf) -> Receiver<ReadInfo> {
-    // let (rtx, rrx) = bounded(READER_CHANNEL_SIZE);
+pub fn spawn_reader(files: Vec<String>) -> Receiver<ReadInfo> {
     let (rtx, rrx) = unbounded();
     std::thread::spawn(move || {
         let start_time = Instant::now();
-        // Open the file or standad input
-        let raw_handle = if file.as_os_str() == "-" {
-            Box::new(std::io::stdin()) as Box<dyn Read>
+
+        if files.is_empty() {
+            info!("no input file, loading from stdin...");
+            let stdin_handle = std::io::stdin();
+            process_file(stdin_handle, &rtx, None);
         } else {
-            let handle = File::open(&file)
-                .expect(format!("Error opening input: {}", file.display()).as_str());
-            Box::new(handle) as Box<dyn Read>
-        };
-        // Wrap it in a buffer
-        let buf_handle = BufReader::with_capacity(BUFSIZE, raw_handle);
-        // Maybe wrap it in a decompressor
-        let maybe_decoder_handle = {
-            if is_gz(&file) {
-                info!("loading gzip file:{:?}",file);
-                Box::new(MultiGzDecoder::new(buf_handle)) as Box<dyn Read>
-            } else {
-                info!("loading fastq file:{:?}",file);
-                Box::new(buf_handle) as Box<dyn Read>
+            for file in files {
+                let path = PathBuf::from(&file);
+                if path.exists() {
+                    let raw_handle = File::open(&path)
+                        .expect(format!("Error opening input: {}", path.display()).as_str());
+                    process_file(raw_handle, &rtx, Some(path));
+                } else {
+                    panic!("File {} does not exist", path.display());
+                }
             }
-        };
-        // Open a FASTQ reader, get an iterator over the records, and chunk them
-        let fastq_reader = Reader::new(maybe_decoder_handle);
-        // Iterate over the chunks
-        for record in fastq_reader.records() {
-            let readinfo = ReadInfo {
-                record: record.unwrap(),
-                split_type_vec: Vec::new(),
-                read_names: Vec::new(),
-                read_name: Vec::new(),
-            };
-            // TODO 增加一个过滤操作，按照长度进行过滤
-            rtx.send(readinfo).expect("Error sending");
         }
+
         let elapsed_time = start_time.elapsed();
         info!("Loading Reads data done! Time elapsed: {:.4?}", elapsed_time)
     });
     rrx
 }
+
+fn process_file<R: Read + 'static>(handle: R, rtx: &Sender<ReadInfo>, path: Option<PathBuf>) {
+    let buf_handle = BufReader::with_capacity(BUFSIZE, handle);
+    let maybe_decoder_handle = {
+        if let Some(path) = path {
+            if is_gz(&path) {
+                info!("loading gzip file:{:?}", path);
+                Box::new(MultiGzDecoder::new(buf_handle)) as Box<dyn Read>
+            } else {
+                info!("loading fastq file:{:?}", path);
+                Box::new(buf_handle) as Box<dyn Read>
+            }
+        } else {
+            Box::new(buf_handle) as Box<dyn Read>
+        }
+    };
+    let fastq_reader = Reader::new(maybe_decoder_handle);
+    for record in fastq_reader.records() {
+        let readinfo = ReadInfo {
+            record: record.unwrap(),
+            split_type_vec: Vec::new(),
+            read_names: Vec::new(),
+            read_name: Vec::new(),
+        };
+        rtx.send(readinfo).expect("Error sending");
+    }
+}
+
+
+
+
+
 
 #[derive(Debug)]
 pub struct ReadInfo {
