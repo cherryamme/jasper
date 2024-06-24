@@ -1,13 +1,13 @@
 mod args;
 mod pattern;
 mod utils;
+mod counter;
 mod fastq;
 mod myers;
 mod splitter;
 mod writer;
 use clap::Parser;
-use log::info;
-use writer::WriterManager;
+use log::{info,debug};
 use utils::ProcessInfo;
 
 fn main() {
@@ -21,29 +21,32 @@ fn main() {
     // debug!("{:?}", search_patterns);
     let start_time = std::time::Instant::now();
     // info!("Create fq.gz reader handler");
-    let rrx = fastq::spawn_reader(args.inputs);
+    let rrx: flume::Receiver<fastq::ReadInfo> = fastq::spawn_reader(args.inputs);
     // info!("Create fq.gz spliter handler");
     let srx = splitter::splitter_receiver(rrx, &search_patterns, args.threads);
-    let mut logger: Vec<String> = Vec::new();
-    let mut counter = fastq::ReadCounter::new();
-    let mut writer_manager = WriterManager::new(args.outdir.clone()).expect("build writer manager fail");
+    let mut counter_manager = counter::CounterManager::new(args.outdir.clone());
+    let mut writer_manager = writer::WriterManager::new(args.outdir.clone());
     // let mut readsinfo = HashMap::new();
     let mut processinfo = ProcessInfo::new(args.log_num.clone());
 
     for readinfo in srx {
         //将readinfo.tsv()写入文件ARG.output, 需要使用GzEncoder写出为gz文件
         // splitter::splitter_logger(&readinfo, &ARGS.output);
-        logger.push(readinfo.to_tsv());
+        
+        writer_manager.logger.push(readinfo.to_tsv());
         // info!("read to_name: {:?}", readinfo.read_names);
-        counter.counter_read(&readinfo.read_names);
+        counter_manager.counter_read(&readinfo);
         writer_manager.write(readinfo).expect("writing readinfo fail");
         processinfo.info();
     }
-    counter.write_to_tsv(&args.outdir).expect("writer split_info fail");
     // splitter::splitter_logger(&readinfo, &mut logger);
-    writer::write_log_file(logger, &args.outdir).expect("writer read_log fail");
-    
-    let elapsed_time = start_time.elapsed();
-    info!("Succes split! process {} reads. Time elapsed: {:.4?}",counter.counter["total"], elapsed_time)
-
+    writer_manager.write_log_file(&args.outdir).expect("writer read_log fail");
+    counter_manager.write_valid_info();
+    debug!("counter_manager: {:?}", counter_manager.counter);
+    let mut elapsed_time = start_time.elapsed();
+    info!("process {}/{} reads (valid/total), valid rate: {:.2} %.",counter_manager.counter["valid"],counter_manager.counter["total"], 100 * counter_manager.counter["valid"]/counter_manager.counter["total"]);
+    info!("Succes split! Time elapsed: {:.4?}", elapsed_time);
+    writer_manager.drop();
+    elapsed_time = start_time.elapsed();
+    info!("All done! Total time elapsed: {:.4?}", elapsed_time);
 }

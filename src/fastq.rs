@@ -6,12 +6,12 @@ use log::info;
 use std::ffi::OsStr;
 use std::{
     fs::File,
-    io::{BufReader, Read, Write},
+    io::{BufReader, Read},
     path::PathBuf,
 };
 use std::time::Instant;
-use std::fs::create_dir_all;
-use std::path::Path;
+use std::collections::HashSet;
+
 const BUFSIZE: usize = 10 * 1024 * 1024;
 
 fn is_gz(path: &PathBuf) -> bool {
@@ -25,7 +25,6 @@ pub fn spawn_reader(files: Vec<String>) -> Receiver<ReadInfo> {
     let (rtx, rrx) = unbounded();
     std::thread::spawn(move || {
         let start_time = Instant::now();
-
         if files.is_empty() {
             info!("no input file, loading from stdin...");
             let stdin_handle = std::io::stdin();
@@ -66,12 +65,7 @@ fn process_file<R: Read + 'static>(handle: R, rtx: &Sender<ReadInfo>, path: Opti
     };
     let fastq_reader = Reader::new(maybe_decoder_handle);
     for record in fastq_reader.records() {
-        let readinfo = ReadInfo {
-            record: record.unwrap(),
-            split_type_vec: Vec::new(),
-            read_names: Vec::new(),
-            read_name: Vec::new(),
-        };
+        let readinfo = ReadInfo::new(record.unwrap());
         rtx.send(readinfo).expect("Error sending");
     }
 }
@@ -85,78 +79,103 @@ fn process_file<R: Read + 'static>(handle: R, rtx: &Sender<ReadInfo>, path: Opti
 pub struct ReadInfo {
     pub record: Record,
     pub split_type_vec: Vec<SplitType>,
-    pub read_names: Vec<String>,
-    pub read_name: Vec<String>,
+    pub outfile: String,
+    pub strand_orient: String,
+    pub read_type: String,
+    pub match_types: Vec<String>,
+    pub match_names: Vec<String>,
+    pub record_id: String,
+    pub write_to_fq: bool,
+    pub out_record: Record,
+    pub read_len: usize,
 }
 impl ReadInfo {
+    pub fn new(record: Record) -> ReadInfo {
+        let readinfo = ReadInfo {
+            record: record.clone(),
+            split_type_vec: Vec::new(),
+            outfile: String::new(),
+            strand_orient: String::from("unknown"),
+            read_type: String::from("valid"),
+            match_types: Vec::new(),
+            match_names: Vec::new(),
+            record_id: String::new(),
+            write_to_fq: false,
+            out_record: Record::new(),
+            read_len: record.seq().len(),
+        };
+        readinfo
+    }
+    pub fn update(&mut self, pattern_match: &Vec<String>, write_type: &String, trim_n: usize,  min_length: usize) {
+        self.update_match_names(pattern_match);
+        self.update_out_filename(write_type);
+        self.update_read_type(min_length);
+        self.update_write_to_fq(trim_n);
+    }   
+    fn update_match_names(&mut self,pattern_match: &Vec<String>){
+        let mut strand_values: Vec<String> = Vec::new();
+        for (i, split_type) in self.split_type_vec.iter().enumerate() {
+            match pattern_match.get(i) {
+                // "dual" < "single" < "unknown"
+                Some(element) if element >= &String::from(split_type.patter_match) => {
+                    self.match_types.push(split_type.pattern_type.clone());
+                    self.match_names.push(split_type.pattern_name.clone());
+                }
+                _ => {
+                    self.match_types.push(String::from("unknown"));
+                    self.match_names.push(String::from("unknown"));
+                    self.read_type = "unknown".to_string();
+                }
+            }
+            strand_values.push(split_type.pattern_strand.clone());
+
+        }
+        while self.match_names.len() <3 {
+            self.match_names.push(String::from("default"));
+        }
+        while self.match_types.len() <3 {
+            self.match_types.push(String::from("default"));
+        }
+        let mut unique_values: HashSet<_> = strand_values.drain(..).collect();
+        unique_values.remove("unknown");
+        if unique_values.len() == 1 {
+            self.strand_orient = unique_values.into_iter().next().unwrap();
+        }
+    }
+    fn update_out_filename(&mut self, write_type: &String){
+        if write_type == "type" {
+            let mut reversed_names = self.match_types.clone();
+            reversed_names.reverse();
+            self.outfile = reversed_names.join("/");
+            self.record_id = self.match_types.join("%")
+        } else {
+            let mut reversed_names = self.match_names.clone();
+            reversed_names.reverse();
+            self.outfile = reversed_names.join("/");
+            self.record_id = self.match_names.join("%")
+        }
+
+    }
+    fn update_read_type(&mut self, min_length: usize){
+        if self.read_len <= min_length {
+            self.read_type = "filtered".to_string();
+        }
+    }
+    fn update_write_to_fq(&mut self,trim_n: usize) {
+        if self.read_type == "valid" {
+            self.write_to_fq = true;
+            let cutleft = self.split_type_vec[trim_n].left_matcher.ystart;
+            let cutright = self.split_type_vec[trim_n].right_matcher.yend;
+            self.out_record= Record::with_attrs(&format!("{}%{}%{}", self.record.id(),self.strand_orient,self.record_id), None, &self.record.seq()[cutleft..cutright], &self.record.qual()[cutleft..cutright]);
+        }
+    }
     pub fn to_tsv(&self) -> String {
         let mut split_type_info =
-            String::from(format!("{}\t{}", self.record.id(), self.record.seq().len()));
+            String::from(format!("{}\t{}", self.record.id(), self.read_len));
         for split_type in self.split_type_vec.iter() {
             split_type_info += format!("\t{}", split_type.to_info(),).as_str();
         }
         return split_type_info;
     }
-    pub fn to_name(&mut self, pattern_match: Vec<String>) {
-        let mut result_vec: Vec<String> = Vec::new();
-        for (i, split_type) in self.split_type_vec.iter().enumerate() {
-            match pattern_match.get(i) {
-                Some(element) if element >= &String::from(split_type.patter_match) => {
-                    result_vec.push(split_type.pattern_type.clone());
-                }
-                _ => {
-                    result_vec.push(String::from("unknown"));
-                }
-            }
-        }
-        self.read_names = result_vec.clone();
-        // result_vec
-    }
-}
-
-use std::collections::HashMap;
-pub struct ReadCounter {
-    pub counter: HashMap<String, u32>,
-    pub names: Vec<String>,
-
-}
-impl ReadCounter {
-    pub fn new() -> ReadCounter {
-        ReadCounter {
-            counter: HashMap::new(),
-            names: vec!["total".to_string(), "valid".to_string(), "unknown".to_string()],
-        }
-    }
-    pub fn counter_read(&mut self, pattern_match: &Vec<String>) {
-        *self.counter.entry("total".to_string()).or_insert(0) += 1;
-        let key = match pattern_match.contains(&"unknown".to_string()) {
-            true => "unknown".to_string(),
-            false => {
-                *self.counter.entry("valid".to_string()).or_insert(0) += 1;
-                pattern_match.join("_")
-            }
-        };
-        if !self.names.contains(&key) {
-            self.names.push(key.clone());
-        }
-        *self.counter.entry(key).or_insert(0) += 1;
-    }
-
-    pub fn write_to_tsv(&self, outdir: &String) -> std::io::Result<()> {
-        let dir_path = Path::new(outdir);
-        create_dir_all(&dir_path)?;
-        info!("Writing split info to tsv");
-    
-        let file_path = dir_path.join("split_info.tsv");
-        let mut file = File::create(file_path)?;
-        write!(file, "{}\n", self.names.join("\t"))?;
-        // Write keys and values
-        for name in &self.names {
-            if let Some(value) = self.counter.get(name) {
-                write!(file, "{}\t", value)?;
-            }
-        }
-        write!(file, "\n")?;
-        Ok(())
-    }
+    // pub fn filter_read
 }
