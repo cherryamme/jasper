@@ -165,7 +165,10 @@ impl ReadInfo {
         if self.read_type == "valid" {
             self.write_to_fq = true;
             let cutleft = self.split_type_vec[trim_n].left_matcher.ystart;
-            let cutright = self.split_type_vec[trim_n].right_matcher.yend;
+            let mut cutright = self.split_type_vec[trim_n].right_matcher.yend;
+            if cutright == 0 {
+                cutright = self.read_len
+            }
             self.out_record= Record::with_attrs(&format!("{}%{}%{}", self.record.id(),self.strand_orient,self.record_id), None, &self.record.seq()[cutleft..cutright], &self.record.qual()[cutleft..cutright]);
         }
     }

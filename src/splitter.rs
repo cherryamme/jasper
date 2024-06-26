@@ -18,9 +18,21 @@ struct ReadChunk {
 }
 impl ReadChunk {
     pub fn new(patternargs: &PatternArgs, readinfo: &ReadInfo) -> Self {
+        let left = if patternargs.window_size[0] > readinfo.read_len {
+            0
+        } else {
+            patternargs.window_size[0]
+        };
+
+        let right = if patternargs.window_size[1] > readinfo.read_len {
+            0
+        } else {
+            readinfo.read_len - patternargs.window_size[1]
+        };
+
         ReadChunk {
-            left: min(patternargs.window_size[0], readinfo.read_len),
-            right: max(readinfo.read_len - patternargs.window_size[1], 0),
+            left: left,
+            right: right,
             pos_mut: false,
         }
     }
@@ -133,12 +145,12 @@ fn calculate_start_end(
     let mut new_end = end;
     match orient {
         "left" => {
-            new_start = max(0, new_end - pattern_len - pattern_shift);
+            new_start = end.checked_sub(pattern_len).and_then(|x| x.checked_sub(pattern_shift)).unwrap_or(0);
             new_end = min(text_len, new_end + pattern_shift);
         }
         "right" => {
             new_end = min(text_len, new_start + pattern_len + pattern_shift);
-            new_start = max(0, new_start - pattern_shift);
+            new_start = start.checked_sub(pattern_shift).unwrap_or(0);
         }
         _ => {}
     };
