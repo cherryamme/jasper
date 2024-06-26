@@ -109,7 +109,7 @@ impl ReadInfo {
     pub fn update(&mut self, pattern_match: &Vec<String>, write_type: &String, trim_n: usize,  min_length: usize) {
         self.update_match_names(pattern_match);
         self.update_out_filename(write_type);
-        self.update_read_type(min_length);
+        self.update_read_type(min_length,trim_n);
         self.update_write_to_fq(trim_n);
     }   
     fn update_match_names(&mut self,pattern_match: &Vec<String>){
@@ -156,9 +156,18 @@ impl ReadInfo {
         }
 
     }
-    fn update_read_type(&mut self, min_length: usize){
+    fn update_read_type(&mut self, min_length: usize, trim_n: usize){
         if self.read_len <= min_length {
             self.read_type = "filtered".to_string();
+        }
+        let cutleft = self.split_type_vec[trim_n].left_matcher.ystart;
+        let mut cutright = self.split_type_vec[trim_n].right_matcher.yend;
+        if cutright == 0 {
+            cutright = self.read_len
+        }
+        if cutleft > cutright {
+            self.read_type = "unknown".to_string();
+            self.write_to_fq = false;
         }
     }
     fn update_write_to_fq(&mut self,trim_n: usize) {
