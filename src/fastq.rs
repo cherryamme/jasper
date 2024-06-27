@@ -110,6 +110,8 @@ impl ReadInfo {
         self.update_match_names(pattern_match);
         self.update_out_filename(write_type);
         self.update_read_type(min_length,trim_n);
+        // debug!("read1: {}", self.to_tsv());
+        // debug!("read1_self: {:?}", self);
         self.update_write_to_fq(trim_n);
     }   
     fn update_match_names(&mut self,pattern_match: &Vec<String>){

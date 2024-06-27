@@ -19,7 +19,7 @@ struct ReadChunk {
 impl ReadChunk {
     pub fn new(patternargs: &PatternArgs, readinfo: &ReadInfo) -> Self {
         let left = if patternargs.window_size[0] > readinfo.read_len {
-            0
+            readinfo.read_len
         } else {
             patternargs.window_size[0]
         };
@@ -27,7 +27,7 @@ impl ReadChunk {
         let right = if patternargs.window_size[1] > readinfo.read_len {
             0
         } else {
-            readinfo.read_len - patternargs.window_size[1]
+            patternargs.window_size[1]
         };
 
         ReadChunk {
@@ -249,7 +249,7 @@ fn splitter(record: &Record, readchunk: &ReadChunk, patternarg1: &PatternArg) ->
     // debug!("left matcher: {:?}", left_matcher);
     // debug!("right matcher: {:?}", right_matcher);
     let mut split_type = SplitType::new(left_matcher, right_matcher);
-    split_type.anno_pattern_type(&patterndb.pattern_type, 10);
+    split_type.anno_pattern_type(&patterndb.pattern_type, patternarg1.pattern_maxdist as i32);
     // debug!("read1: {:?}", split_type);
     return split_type;
 }
