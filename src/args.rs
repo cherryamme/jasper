@@ -21,40 +21,40 @@ pub struct Args {
     /// Number of threads
     #[arg(short, long, default_value = "4")]
     pub threads: usize,
-    // filter read by min_length
+    /// filter read by min_length
     #[arg(short, long, default_value = "100")]
     pub min_length: usize,
-    // pattern_files for split
+    /// pattern_files for split
 	#[arg(short,long, num_args = 1..,value_delimiter = ' ', default_value="example/cyclone_barcode.list")]
 	pub pattern_files: Vec<String>,
-    // window_size for split
+    /// window_size for split
     #[arg(short,long,value_delimiter = ',', help="windows size to finder pattern <left,right>", default_value="400,400")]
     pub window_size: Vec<usize>,
-    // whether to trim seq
+    /// whether to trim seq
     #[arg(long, default_value = "0")]
     pub trim_n: usize,
-    // write_type for split
+    /// write_type for split
     #[arg(long, default_value = "type", value_parser = ["names","type"])]
     pub write_type: String,
-    // pattern_db_file for split
+    /// pattern_db_file for split
 	#[arg(long = "db",default_value="example/pattern.db")]
     pub pattern_db_file: String,
-    // pattern_match for split, can set multiple splittype <single or dual>
+    /// pattern_match for split, can set multiple splittype <single or dual>
     #[arg(long, num_args = 1..,value_delimiter = ' ', default_value="single",value_parser = ["single","dual"])]
     pub pattern_match: Vec<String>,
-    // split log nums per record
+    /// split log nums per record
     #[arg(long = "log_num", default_value = "100000", help="process reads num log per second.")]
     pub log_num: u32,
-    // detect pattern on previous patern pos, more accurate.
+    /// detect pattern on previous patern pos, more accurate.
     #[arg(long = "pos")]
     pub pattern_pos: bool,
-    // when detect pattern on previous patern pos, set a shift for multiple pattern split, small for short pattern is more accurate.
+    /// when detect pattern on previous patern pos, set a shift for multiple pattern split, small for short pattern is more accurate.
     #[arg(long, num_args = 1..,value_delimiter = ' ', default_value="3")]
     pub pattern_shift: Vec<usize>,
-    // set a errate for multiple pattern use whiteblack,set left and right errate use comma, errate range in <0-0.5>, err = pattern_len x errate.
-    #[arg(long, num_args = 1..,value_delimiter = ' ', default_value="0.2,0.3",value_parser=errrate_validator)]
+    /// set a errate for multiple pattern use whiteblack,set left and right errate use comma, errate range in <0-0.5>, err = pattern_len x errate.
+    #[arg(long, num_args = 1..,value_delimiter = ' ', default_value="0.2,0.2",value_parser=errrate_validator)]
     pub pattern_errate: Vec<(f32,f32)>,
-    // set a maxdist for patterns, set left and right maxdist use comma.
+    /// set a maxdist for patterns, set left and right maxdist use comma.
     #[arg(long, num_args = 1..,value_delimiter = ',', default_value="4")]
     pub pattern_maxdist: Vec<usize>,
 }
