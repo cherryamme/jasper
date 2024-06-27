@@ -7,11 +7,11 @@
 
 ```shell
 # stdin
-zcat *.fastq.gz | jasper
+zcat *.fastq.gz | jasper -p pattern1.list --db pattern.db
 
 
 # file in
-jasper -i test.fq.gz -o test_out --db example/pattern.db -p cyclone_barcode.list
+jasper -i test.fq.gz -o test_out -p cyclone_barcode.list --db example/pattern.db
 
 
 # yt cluster command test
@@ -24,13 +24,21 @@ outdir=/home/long_read/LRS/data/LRS_MTB/2024-3-8-MTB_p2/$name
 ```
 
 支持多线程：--threads
+
 支持在不同pattern裁剪：--trim-n ,当trim-n>pattern次数时，保留全长
+
 支持短片段过滤：--min-length
+
 支持连续拆分：-p 输入多个pattern文件
+
 支持每个pattern定义单双端： --pattern-match
+
 支持多个pattern识别位置拆分：--pos
+
 支持写出引物对组合or引物对类型：--write-type
+
 支持设置不同错误率（可定义多个）：--pattern-errate --pattern-shift
+
 支持前后引物校正：--pattern-maxdist
 
 
