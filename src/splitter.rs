@@ -5,7 +5,7 @@ use crate::pattern::{PatternArg, PatternArgs};
 use bio::io::fastq::Record;
 use flume::Receiver;
 use log::info;
-use std::cmp::{max, min};
+use std::cmp::min;
 use std::collections::HashMap;
 use std::thread;
 use std::time::Instant;
@@ -83,6 +83,9 @@ impl SplitType {
     ) -> (){
         let (patter_match, key) =
             self.get_match_key(pattern_maxdist);
+            if key == "_".to_string() || key == "unknown".to_string(){
+                return;
+            }
             for (dict_key, value) in pattern_type_dict {
                 if dict_key.contains(&key) {
                     self.patter_match = patter_match;
@@ -97,18 +100,35 @@ impl SplitType {
         &self,
         pattern_maxdist: i32,
     ) -> (&'static str, String) {
-        let score_diff = self.right_matcher.score - self.left_matcher.score;
-        if score_diff.abs() <= pattern_maxdist {
+        if self.right_matcher.status && self.left_matcher.status {
+            let score_diff = self.right_matcher.score - self.left_matcher.score;
+            if score_diff.abs() <= pattern_maxdist {
+                return (
+                    "dual",
+                    format!("{}_{}", self.left_matcher.pattern, self.right_matcher.pattern),
+                );
+            }
+            if score_diff > 0 {
+                ("left", format!("{}_", self.left_matcher.pattern))
+            } else {
+                ("right", format!("_{}", self.right_matcher.pattern))
+            }
+        }else if self.right_matcher.status {
             return (
-                "dual",
-                format!("{}_{}", self.left_matcher.pattern, self.right_matcher.pattern),
+                "right",
+                format!("_{}", self.right_matcher.pattern),
+            )
+        }else if self.left_matcher.status {
+            return (
+                "left",
+                format!("{}_", self.left_matcher.pattern),
             );
+        }else {
+            return (
+                "unknown",
+                String::from("unknown"));
         }
-        if score_diff > 0 {
-            ("left", format!("{}_", self.left_matcher.pattern))
-        } else {
-            ("right", format!("_{}", self.right_matcher.pattern))
-        }
+
     }
 }
 
