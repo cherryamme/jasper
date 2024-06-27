@@ -1,7 +1,10 @@
 [package]
 name = "jasper"
-version = "0.1.0"
+version = "0.0.3"
 edition = "2021"
+authors = ["jiangchen"]
+email = ["jiangchen2@genomics.cn"]
+description = "jasper: used to split long read fastq/gz data"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
