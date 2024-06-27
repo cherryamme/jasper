@@ -175,8 +175,15 @@ impl ReadInfo {
     fn update_write_to_fq(&mut self,trim_n: usize) {
         if self.read_type == "valid" {
             self.write_to_fq = true;
-            let cutleft = self.split_type_vec[trim_n].left_matcher.ystart;
-            let mut cutright = self.split_type_vec[trim_n].right_matcher.yend;
+            let cutleft;
+            let mut cutright;
+            if trim_n < self.split_type_vec.len() {
+                cutleft = self.split_type_vec[trim_n].left_matcher.ystart;
+                cutright = self.split_type_vec[trim_n].right_matcher.yend;
+            } else {
+                cutleft = 0;
+                cutright = self.read_len;
+            }
             if cutright == 0 {
                 cutright = self.read_len
             }
