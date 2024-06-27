@@ -10,7 +10,6 @@ pub struct PatternArgs {
     pub window_size: Vec<usize>,
     pub pattern_match: Vec<String>,
     pub pattern_vec: Vec<PatternArg>,
-    pub treads: usize,
     pub trim_n: usize,
     pub write_type: String,
     pub pattern_errate: Vec<(f32, f32)>,
@@ -24,7 +23,6 @@ impl PatternArgs {
             window_size: inputargs.window_size.clone(),
             pattern_match: inputargs.pattern_match.clone(),
             pattern_vec: vec![],
-            treads: inputargs.threads,
             trim_n: inputargs.trim_n,
             write_type: inputargs.write_type.clone(),
             pattern_errate: inputargs.pattern_errate.clone(),
@@ -52,7 +50,6 @@ impl PatternArgs {
 #[derive(Debug,Clone)]
 pub struct PatternArg {
     pub pattern_db: PatternDB,      // search db
-    pub pattern_match: String,  // single or dual
     pub pattern_pos: bool,          // use position or not
     // pub pattern_shift: usize,       // >0 means shift to right, <0 means shift to left
     pub pattern_errate: (f32, f32), // error rate for left and right
@@ -150,7 +147,6 @@ pub fn get_patterns(inputargs: &Args) -> PatternArgs {
         patterndb.get_pattern(&inputargs.pattern_db_file, &inputargs.pattern_files[i]);
         let patternarg = PatternArg {
             pattern_db: patterndb,
-            pattern_match: patternargs.pattern_match[i].clone(),
             pattern_pos: true,
             pattern_errate: patternargs.pattern_errate[i].clone(),
             pattern_maxdist: patternargs.pattern_maxdist[i].clone(),

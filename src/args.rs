@@ -25,10 +25,10 @@ pub struct Args {
     #[arg(short, long, default_value = "100")]
     pub min_length: usize,
     /// pattern_files for split
-	#[arg(short,long, num_args = 1..,value_delimiter = ' ', default_value="example/cyclone_barcode.list")]
+	#[arg(short,long, required = true, num_args = 1..,value_delimiter = ' ')]
 	pub pattern_files: Vec<String>,
-    /// window_size for split
-    #[arg(short,long,value_delimiter = ',', help="windows size to finder pattern <left,right>", default_value="400,400")]
+    /// windows size to finder pattern <left,right>
+    #[arg(short,long,value_delimiter = ',', default_value="400,400")]
     pub window_size: Vec<usize>,
     /// whether to trim seq
     #[arg(long, default_value = "0")]
@@ -37,13 +37,13 @@ pub struct Args {
     #[arg(long, default_value = "type", value_parser = ["names","type"])]
     pub write_type: String,
     /// pattern_db_file for split
-	#[arg(long = "db",default_value="example/pattern.db")]
+	#[arg(long = "db")]
     pub pattern_db_file: String,
     /// pattern_match for split, can set multiple splittype <single or dual>
     #[arg(long, num_args = 1..,value_delimiter = ' ', default_value="single",value_parser = ["single","dual"])]
     pub pattern_match: Vec<String>,
     /// split log nums per record
-    #[arg(long = "log_num", default_value = "100000", help="process reads num log per second.")]
+    #[arg(long = "log_num", default_value = "100000")]
     pub log_num: u32,
     /// detect pattern on previous patern pos, more accurate.
     #[arg(long = "pos")]

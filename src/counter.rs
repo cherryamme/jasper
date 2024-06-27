@@ -9,7 +9,6 @@ pub struct CounterManager {
     pub counter: HashMap<String, u32>,
     pub validname_counter: HashMap<String, HashMap<String, HashMap<String, u32>>>,
     pub validtype_counter: HashMap<String, HashMap<String, HashMap<String, u32>>>,
-    pub names: Vec<String>,
     outdir: String,
 }
 impl CounterManager {
@@ -19,7 +18,7 @@ impl CounterManager {
             counter: HashMap::new(),
             validname_counter: HashMap::new(),
             validtype_counter: HashMap::new(),
-            names: vec!["total".to_string(),"filtered".to_string(), "unknown".to_string(), "valid".to_string()],
+            // names: vec!["total".to_string(),"filtered".to_string(), "unknown".to_string(), "valid".to_string()],
             outdir: outdir,
         }
     }
@@ -60,6 +59,16 @@ impl CounterManager {
                 }
             }
         }
+    }
+    pub fn info(&self){
+        let valid = self.counter.get("valid").unwrap_or(&0);
+        let total = self.counter.get("total").unwrap_or(&0);
+        let valid_rate = if *total > 0 {
+            100 * *valid / *total
+        } else {
+            0
+        };
+        info!("process {}/{} reads (valid/total), valid rate: {:.2} %.", valid, total, valid_rate);
     }
 
 }

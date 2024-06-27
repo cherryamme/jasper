@@ -44,7 +44,7 @@ fn main() {
     counter_manager.write_valid_info();
     debug!("counter_manager: {:?}", counter_manager.counter);
     let mut elapsed_time = start_time.elapsed();
-    info!("process {}/{} reads (valid/total), valid rate: {:.2} %.",counter_manager.counter["valid"],counter_manager.counter["total"], 100 * counter_manager.counter["valid"]/counter_manager.counter["total"]);
+    counter_manager.info();
     info!("Succes split! Time elapsed: {:.4?}", elapsed_time);
     writer_manager.drop();
     elapsed_time = start_time.elapsed();
