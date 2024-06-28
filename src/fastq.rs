@@ -106,13 +106,13 @@ impl ReadInfo {
         };
         readinfo
     }
-    pub fn update(&mut self, pattern_match: &Vec<String>, write_type: &String, trim_n: usize,  min_length: usize) {
+    pub fn update(&mut self, pattern_match: &Vec<String>, write_type: &String, trim_n: usize,  min_length: usize, id_sep: &String) {
         self.update_match_names(pattern_match);
-        self.update_out_filename(write_type);
+        self.update_out_filename(write_type, id_sep);
         self.update_read_type(min_length,trim_n);
         // debug!("read1: {}", self.to_tsv());
         // debug!("read1_self: {:?}", self);
-        self.update_write_to_fq(trim_n);
+        self.update_write_to_fq(trim_n, id_sep);
     }   
     fn update_match_names(&mut self,pattern_match: &Vec<String>){
         let mut strand_values: Vec<String> = Vec::new();
@@ -144,17 +144,17 @@ impl ReadInfo {
             self.strand_orient = unique_values.into_iter().next().unwrap();
         }
     }
-    fn update_out_filename(&mut self, write_type: &String){
+    fn update_out_filename(&mut self, write_type: &String, id_sep: &String){
         if write_type == "type" {
             let mut reversed_names = self.match_types.clone();
             reversed_names.reverse();
             self.outfile = reversed_names.join("/");
-            self.record_id = self.match_types.join("%")
+            self.record_id = self.match_types.join(id_sep)
         } else {
             let mut reversed_names = self.match_names.clone();
             reversed_names.reverse();
             self.outfile = reversed_names.join("/");
-            self.record_id = self.match_names.join("%")
+            self.record_id = self.match_names.join(id_sep)
         }
 
     }
@@ -172,7 +172,7 @@ impl ReadInfo {
             self.write_to_fq = false;
         }
     }
-    fn update_write_to_fq(&mut self,trim_n: usize) {
+    fn update_write_to_fq(&mut self,trim_n: usize, id_sep: &String) {
         if self.read_type == "valid" {
             self.write_to_fq = true;
             let cutleft;
@@ -187,7 +187,7 @@ impl ReadInfo {
             if cutright == 0 {
                 cutright = self.read_len
             }
-            self.out_record= Record::with_attrs(&format!("{}%{}%{}", self.record.id(),self.strand_orient,self.record_id), None, &self.record.seq()[cutleft..cutright], &self.record.qual()[cutleft..cutright]);
+            self.out_record= Record::with_attrs(&format!("{}{}{}{}{}", self.record.id(),id_sep,self.strand_orient,id_sep,self.record_id), None, &self.record.seq()[cutleft..cutright], &self.record.qual()[cutleft..cutright]);
         }
     }
     pub fn to_tsv(&self) -> String {

@@ -60,6 +60,9 @@ pub struct Args {
     /// set a maxdist for patterns, set left and right maxdist use comma.
     #[arg(long = "maxdist", num_args = 1..,value_delimiter = ',', default_value="4")]
     pub pattern_maxdist: Vec<usize>,
+    /// set record id sep delimiter.
+    #[arg(long = "id_sep", default_value="%")]
+    pub id_sep: String,
 }
 
 fn errrate_validator(input: &str) -> Result<(f32,f32), String> {

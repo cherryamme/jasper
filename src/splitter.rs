@@ -293,7 +293,7 @@ pub fn splitter_receiver(
             for mut readinfo in rrx.iter() {
                 readinfo.split_type_vec = splitter_vec(&readinfo, &patternargs);
                 // get split_type_vec annotation
-                readinfo.update(&patternargs.pattern_match,&patternargs.write_type,patternargs.trim_n, patternargs.min_length);
+                readinfo.update(&patternargs.pattern_match,&patternargs.write_type,patternargs.trim_n, patternargs.min_length, &patternargs.id_sep);
                 // info!("read1: {}", matched_reads.to_tsv());
                 stx.send(readinfo).expect("splitter send error");
                 read_count += 1;

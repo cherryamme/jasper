@@ -16,6 +16,7 @@ pub struct PatternArgs {
     pub pattern_maxdist: Vec<usize>,
     pub pattern_shift: Vec<usize>,
     pub min_length: usize,
+    pub id_sep: String,
 }
 impl PatternArgs {
     pub fn new(inputargs: &Args) -> PatternArgs {
@@ -29,6 +30,7 @@ impl PatternArgs {
             pattern_maxdist: inputargs.pattern_maxdist.clone(),
             pattern_shift: inputargs.pattern_shift.clone(),
             min_length: inputargs.min_length,
+            id_sep: inputargs.id_sep.clone(),
         };
         p.fix_vec();
         return p;
