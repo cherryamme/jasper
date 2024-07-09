@@ -27,7 +27,7 @@ impl ReadChunk {
         let right = if patternargs.window_size[1] > readinfo.read_len {
             0
         } else {
-            patternargs.window_size[1]
+            readinfo.read_len - patternargs.window_size[1]
         };
 
         ReadChunk {
