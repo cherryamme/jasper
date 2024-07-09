@@ -14,8 +14,13 @@ pub struct CounterManager {
 impl CounterManager {
     pub fn new(outdir: String) -> CounterManager {
 		info!("Creating counter manager, start counting...");
+        let mut counter = HashMap::new();
+        counter.insert("valid".to_string(), 0);
+        counter.insert("total".to_string(), 0);
+        counter.insert("filtered".to_string(), 0);
+        counter.insert("unknown".to_string(), 0);
         CounterManager {
-            counter: HashMap::new(),
+            counter: counter,
             validname_counter: HashMap::new(),
             validtype_counter: HashMap::new(),
             // names: vec!["total".to_string(),"filtered".to_string(), "unknown".to_string(), "valid".to_string()],
@@ -70,5 +75,46 @@ impl CounterManager {
         };
         info!("process {}/{} reads (valid/total), valid rate: {:.2} %.", valid, total, valid_rate);
     }
+    // pub fn write_total_info(&self) {
+    //     let mut file = File::create(Path::new(&self.outdir).join("total_info.tsv")).expect("fail to create total_info.tsv");
+    //     writeln!(file, "type\tcount").expect("fail to write header");
+    //     for (read_type, count) in &self.counter {
+    //         writeln!(file, "{}\t{}", read_type, count).expect("fail to write read info");
+    //     }
+    // }
+    pub fn write_total_info(&self) {
+        let total_reads = *self.counter.get("total").unwrap_or(&0) as f64;
+        let valid_reads = *self.counter.get("valid").unwrap_or(&0) as f64;
+        let unkown_reads = *self.counter.get("unknown").unwrap_or(&0) as f64;
+        let filtered_reads = *self.counter.get("filtered").unwrap_or(&0) as f64;
 
+        let valid_rate = if total_reads > 0.0 {
+            valid_reads / total_reads * 100.0
+        } else {
+            0.0
+        };
+        let unkown_rate = if total_reads > 0.0 {
+            unkown_reads / total_reads * 100.0
+        } else {
+            0.0
+        };
+        let filtered_rate = if total_reads > 0.0 {
+            filtered_reads / total_reads * 100.0
+        } else {
+            0.0
+        };
+
+        let mut file = File::create(Path::new(&self.outdir).join("total_info.tsv")).expect("fail to create total_info.tsv");
+        writeln!(file, "total\tfiltered\tfiltered_rate\tunkown\tunkown_rate\tvalid\tvalid_rate").expect("fail to write header");
+
+        writeln!(file, "{}\t{}\t{:.2}%\t{}\t{:.2}%\t{}\t{:.2}%", 
+            total_reads as u32, 
+            filtered_reads as u32, 
+            filtered_rate,
+            unkown_reads as u32,
+            unkown_rate,
+            valid_reads as u32, 
+            valid_rate, 
+        ).expect("fail to write total_info");
+    }
 }

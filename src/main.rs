@@ -41,6 +41,8 @@ fn main() {
     }
     // splitter::splitter_logger(&readinfo, &mut logger);
     writer_manager.write_log_file(&args.outdir).expect("writer read_log fail");
+    counter_manager.write_total_info();
+    // counter_manager.write_detailed_info();
     counter_manager.write_valid_info();
     debug!("counter_manager: {:?}", counter_manager.counter);
     let mut elapsed_time = start_time.elapsed();

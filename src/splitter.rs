@@ -82,7 +82,7 @@ impl SplitType {
         pattern_maxdist: i32,
     ) -> (){
         let (patter_match, key) =
-            self.get_match_key(pattern_maxdist);
+            self.get_match_key(pattern_maxdist, pattern_type_dict);
             if key == "_".to_string() || key == "unknown".to_string(){
                 return;
             }
@@ -99,13 +99,18 @@ impl SplitType {
     pub fn get_match_key(
         &self,
         pattern_maxdist: i32,
+        pattern_type_dict: &HashMap<String, (String, String, String)>,
     ) -> (&'static str, String) {
         if self.right_matcher.status && self.left_matcher.status {
+            let combined_pattern = format!("{}_{}", self.left_matcher.pattern, self.right_matcher.pattern);
+            if pattern_type_dict.contains_key(&combined_pattern) {
+                return ("dual", combined_pattern);
+            }
             let score_diff = self.right_matcher.score - self.left_matcher.score;
             if score_diff.abs() <= pattern_maxdist {
                 return (
                     "dual",
-                    format!("{}_{}", self.left_matcher.pattern, self.right_matcher.pattern),
+                    combined_pattern,
                 );
             }
             if score_diff > 0 {
