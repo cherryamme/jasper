@@ -162,8 +162,15 @@ impl ReadInfo {
         if self.read_len <= min_length {
             self.read_type = "filtered".to_string();
         }
-        let cutleft = self.split_type_vec[trim_n].left_matcher.ystart;
-        let mut cutright = self.split_type_vec[trim_n].right_matcher.yend;
+        let cutleft;
+        let mut cutright;
+        if trim_n == 0 {
+            cutleft = self.split_type_vec[0].left_matcher.yend;
+            cutright = self.split_type_vec[0].right_matcher.ystart;
+        }else {
+            cutleft = self.split_type_vec[trim_n-1].left_matcher.ystart;
+            cutright = self.split_type_vec[trim_n-1].right_matcher.yend;
+        }
         if cutright == 0 {
             cutright = self.read_len
         }
@@ -177,16 +184,20 @@ impl ReadInfo {
             self.write_to_fq = true;
             let cutleft;
             let mut cutright;
-            if trim_n < self.split_type_vec.len() {
-                cutleft = self.split_type_vec[trim_n].left_matcher.ystart;
-                cutright = self.split_type_vec[trim_n].right_matcher.yend;
-            } else {
+            if trim_n == 0 {
+                cutleft = self.split_type_vec[0].left_matcher.yend;
+                cutright = self.split_type_vec[0].right_matcher.ystart;
+            }else if trim_n <= self.split_type_vec.len(){
+                cutleft = self.split_type_vec[trim_n-1].left_matcher.ystart;
+                cutright = self.split_type_vec[trim_n-1].right_matcher.yend;
+            }else {
                 cutleft = 0;
                 cutright = self.read_len;
             }
             if cutright == 0 {
                 cutright = self.read_len
             }
+
             self.out_record= Record::with_attrs(&format!("{}{}{}{}{}", self.record.id(),id_sep,self.strand_orient,id_sep,self.record_id), None, &self.record.seq()[cutleft..cutright], &self.record.qual()[cutleft..cutright]);
         }
     }
