@@ -48,7 +48,7 @@ pub struct Args {
     /// set a errate for multiple pattern use whiteblack,set left and right errate use comma, errate range in <0-0.5>, err = pattern_len x errate.
     #[arg(short = 'e', long, num_args = 1..,value_delimiter = ' ', default_value="0.2,0.2",value_parser=errrate_validator)]
     pub pattern_errate: Vec<(f32,f32)>,
-    /// whether to trim seq
+    /// whether to trim seq, 0 means trim all, 1 means keep one pattern, 2 means keep two pattern...
     #[arg(long, default_value = "0")]
     pub trim_n: usize,
     /// write_type for split
