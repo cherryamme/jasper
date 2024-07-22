@@ -33,6 +33,12 @@ pub struct Args {
     /// pattern_db_file for split
 	#[arg(short = 'd', long = "db")]
     pub pattern_db_file: String,
+    /// fusion file to detect fusion
+    #[arg(short = 'f', long = "fusion", default_value= "")]
+    pub fusion_file: String,
+    /// fusion errrate
+    #[arg(long = "fe", default_value = "0.2")]
+    pub fusion_errate: f32,
     /// split log nums per record
     #[arg(short = 'n', long = "num", default_value = "100000")]
     pub log_num: u32,

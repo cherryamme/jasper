@@ -88,6 +88,7 @@ pub struct ReadInfo {
     pub write_to_fq: bool,
     pub out_record: Record,
     pub read_len: usize,
+    pub seq_window: (usize,usize)
 }
 impl ReadInfo {
     pub fn new(record: Record) -> ReadInfo {
@@ -103,6 +104,7 @@ impl ReadInfo {
             write_to_fq: false,
             out_record: Record::new(),
             read_len: record.seq().len(),
+            seq_window: (0,record.seq().len())
         };
         readinfo
     }
@@ -112,6 +114,7 @@ impl ReadInfo {
         self.update_read_type(min_length,trim_n);
         // debug!("read1: {}", self.to_tsv());
         // debug!("read1_self: {:?}", self);
+        self.update_readseq_window();
         self.update_write_to_fq(trim_n, id_sep);
     }   
     fn update_match_names(&mut self,pattern_match: &Vec<String>){
@@ -158,6 +161,16 @@ impl ReadInfo {
         }
 
     }
+    pub fn update_readseq_window(&mut self){
+        if self.split_type_vec[0].left_matcher.status{
+            let left  = self.split_type_vec[0].left_matcher.yend;
+            self.seq_window.0 = left;
+        }
+        if self.split_type_vec[0].right_matcher.status{
+            let right = self.split_type_vec[0].right_matcher.ystart;
+            self.seq_window.1 = right;
+        }
+    }
     fn update_read_type(&mut self, min_length: usize, trim_n: usize){
         if self.read_len <= min_length {
             self.read_type = "filtered".to_string();
@@ -203,7 +216,7 @@ impl ReadInfo {
     }
     pub fn to_tsv(&self) -> String {
         let mut split_type_info =
-            String::from(format!("{}\t{}", self.record.id(), self.read_len));
+            String::from(format!("{}\t{}\t{}", self.record.id(), self.read_len, self.read_type));
         for split_type in self.split_type_vec.iter() {
             split_type_info += format!("\t{}", split_type.to_info(),).as_str();
         }

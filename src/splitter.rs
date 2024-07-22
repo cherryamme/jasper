@@ -144,7 +144,7 @@ pub struct Matcher {
     score: i32,
     pub ystart: usize,
     pub yend: usize,
-    status: bool,
+    pub status: bool,
 }
 impl Matcher {
     pub fn new() -> Self {
@@ -268,7 +268,7 @@ pub fn splitter_vec(readinfo: &ReadInfo, patternargs: &PatternArgs) -> Vec<Split
         if patternarg.pattern_pos
             && split_type.left_matcher.status
             && split_type.right_matcher.status
-        {
+            {
             // let right_bound: usize = if right <= record.seq().len() - 30 { right + 30 } else { record.seq().len() };
 
             readchunk.left = split_type.left_matcher.ystart.clone();
@@ -281,6 +281,36 @@ pub fn splitter_vec(readinfo: &ReadInfo, patternargs: &PatternArgs) -> Vec<Split
     }
     return split_type_vec;
 }
+
+fn fusion_detect(readinfo: &ReadInfo, patternargs: &PatternArgs) -> bool {
+    let (middle_start,middle_end)  = readinfo.seq_window;
+    if middle_end <= middle_start{
+        return false;
+    }
+    let fusion_db = &patternargs.fusion_db.fusion_db;
+    let mut search_pattern = SearchPattern::new(readinfo.record.seq().to_vec(), patternargs.fusion_errate);
+
+    // Search for the pattern in the middle part
+    let middle_matcher = find_matcher(
+        middle_start,
+        middle_end,
+        fusion_db,
+        &mut search_pattern,
+        false,
+        0,
+        "middle",
+    );
+
+    // If a pattern is found in the middle part, return true
+    if middle_matcher.status {
+        return true;
+    }
+
+    // If no pattern is found, return false
+    false
+}
+
+
 
 pub fn splitter_receiver(
     rrx: Receiver<ReadInfo>,
@@ -299,6 +329,11 @@ pub fn splitter_receiver(
                 readinfo.split_type_vec = splitter_vec(&readinfo, &patternargs);
                 // get split_type_vec annotation
                 readinfo.update(&patternargs.pattern_match,&patternargs.write_type,patternargs.trim_n, patternargs.min_length, &patternargs.id_sep);
+                if !patternargs.fusion_db.is_empty() && fusion_detect(&readinfo, &patternargs) {
+                    readinfo.read_type = "fusion".into();
+                    readinfo.write_to_fq = false;
+                }
+                
                 // info!("read1: {}", matched_reads.to_tsv());
                 stx.send(readinfo).expect("splitter send error");
                 read_count += 1;

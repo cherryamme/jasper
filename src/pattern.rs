@@ -17,6 +17,8 @@ pub struct PatternArgs {
     pub pattern_shift: Vec<usize>,
     pub min_length: usize,
     pub id_sep: String,
+    pub fusion_db: FusionDB,
+    pub fusion_errate: f32,
 }
 impl PatternArgs {
     pub fn new(inputargs: &Args) -> PatternArgs {
@@ -31,6 +33,8 @@ impl PatternArgs {
             pattern_shift: inputargs.pattern_shift.clone(),
             min_length: inputargs.min_length,
             id_sep: inputargs.id_sep.clone(),
+            fusion_db: FusionDB::new(),
+            fusion_errate: inputargs.fusion_errate,
         };
         p.fix_vec();
         return p;
@@ -137,13 +141,74 @@ impl PatternDB {
     }
 }
 
+#[derive(Debug,Clone)]
+pub struct FusionDB {
+    pub fusion_db: HashMap<String, String>,
+}    // fusion patterns to find
+impl FusionDB {
+fn new() -> FusionDB {
+    FusionDB {
+        fusion_db: HashMap::new(),
+    }
+}
+pub fn is_empty(&self) -> bool {
+    self.fusion_db.is_empty()
+}
 
-
-
+fn loading_pattern_db(&self, file: &str) -> HashMap<String, String> {
+    //loading pattern db file
+    let mut pattern_db = HashMap::new();
+    let mut rdr = csv::ReaderBuilder::new()
+        .has_headers(false)
+        .delimiter(b'\t')
+        .from_path(file)
+        .expect(&format!("no such file({}) found", file));
+    // info!("loading pattern db file success({})...", file);
+    for result in rdr.records() {
+        let recored = result.unwrap();
+        let name = &recored[0];
+        let seq = &recored[1];
+        pattern_db.insert(name.to_string(), seq.to_string());
+    }
+    // debug!("pattern_db is {:?}", pattern_db);
+    return pattern_db;
+}
+fn loading_pattern(&mut self, file: &str, pattern_db: HashMap<String, String>){
+    //loading tsv file
+    // let file = File::open(file).unwrap();
+    let mut rdr = csv::ReaderBuilder::new()
+        .has_headers(true)
+        .delimiter(b'\t')
+        .from_path(file)
+        .expect(&format!("no such file({}) found", file));
+    for result in rdr.records() {
+        let record = result.unwrap();
+        let fusion_pattern = record[0].to_string();
+        let fusion_seq = pattern_db
+            .get(&fusion_pattern)
+            .expect(&format!("no such fusion pattern({}) in pattern", fusion_pattern))
+            .to_string();
+        self.fusion_db.insert(fusion_pattern.clone(), fusion_seq.clone());
+    }
+}    
+pub fn get_pattern(&mut self, pattern_db_file: &String, pattern_file: &String){
+    let pattern_db = self.loading_pattern_db(pattern_db_file);
+    self.loading_pattern(
+        pattern_file,
+        pattern_db,
+    );
+}
+}
 
 pub fn get_patterns(inputargs: &Args) -> PatternArgs {
     info!("loading pattern db file({})...", &inputargs.pattern_db_file);
     let mut patternargs = PatternArgs::new(inputargs);
+
+    let mut fusion_db = FusionDB::new();
+    if &inputargs.fusion_file != "" {
+        fusion_db.get_pattern(&inputargs.pattern_db_file, &inputargs.fusion_file);
+        patternargs.fusion_db = fusion_db;
+    }
     for i in 0..inputargs.pattern_files.len() {
         let mut patterndb = PatternDB::new();
         patterndb.get_pattern(&inputargs.pattern_db_file, &inputargs.pattern_files[i]);
@@ -162,9 +227,36 @@ pub fn get_patterns(inputargs: &Args) -> PatternArgs {
 
 
 #[test]
-pub fn test(){
+pub fn test0(){
     use clap::Parser;
     let args = crate::args::Args::parse();
     let search_patterns = get_patterns(&args);
     info!("{:?}", search_patterns);
+}
+#[test]
+pub fn test1(){
+    pretty_env_logger::init();
+    // use clap::Parser;
+    // let args = crate::args::Args::parse();
+    let mut patterndb = PatternDB::new();
+    let db = "/home/jiangchen/project/jasper/example/pattern.db".to_string();
+    let file = "/home/jiangchen/project/jasper/example/primer.list".to_string();
+    patterndb.get_pattern(&db, &file);
+    info!("{:?}", patterndb);
+}
+
+
+
+
+
+#[test]
+pub fn test2(){
+    pretty_env_logger::init();
+    // use clap::Parser;
+    // let args = crate::args::Args::parse();
+    let mut fusion_db = FusionDB::new();
+    let db = "/home/jiangchen/project/jasper/example/pattern.db".to_string();
+    let file = "/home/jiangchen/project/jasper/example/fusion.list".to_string();
+    fusion_db.get_pattern(&db, &file);
+    info!("{:?}", fusion_db);
 }

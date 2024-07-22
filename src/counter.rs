@@ -19,6 +19,7 @@ impl CounterManager {
         counter.insert("total".to_string(), 0);
         counter.insert("filtered".to_string(), 0);
         counter.insert("unknown".to_string(), 0);
+        counter.insert("fusion".to_string(), 0);
         CounterManager {
             counter: counter,
             validname_counter: HashMap::new(),
@@ -31,7 +32,7 @@ impl CounterManager {
         *self.counter.entry("total".to_string()).or_insert(0) += 1;
         *self.counter.entry(readinfo.read_type.clone()).or_insert(0) += 1;
         if readinfo.read_type == "valid" {
-            let primer = readinfo.match_names[0].clone();
+            let primer: String = readinfo.match_names[0].clone();
             let index = readinfo.match_names[1].clone();
             let barcode = readinfo.match_names[2].clone();
             let primer_type = readinfo.match_types[0].clone();
@@ -68,11 +69,25 @@ impl CounterManager {
     pub fn info(&self){
         let valid = self.counter.get("valid").unwrap_or(&0);
         let total = self.counter.get("total").unwrap_or(&0);
+        let fusion = self.counter.get("fusion").unwrap_or(&0);
+        let filterd = self.counter.get("filtered").unwrap_or(&0);
         let valid_rate = if *total > 0 {
             100 * *valid / *total
         } else {
             0
         };
+        let fusion_rate = if *total > 0 {
+            100 * *fusion / *total
+        } else {
+            0
+        };
+        let filterd_rate = if *total > 0 {
+            100 * *filterd / *total
+        } else {
+            0
+        };
+        info!("process {}/{} reads (filtered/total), filtered rate: {:.2} %.", filterd, total, filterd_rate);
+        info!("process {}/{} reads (fusion/total), fusion rate: {:.2} %.", fusion, total, fusion_rate);
         info!("process {}/{} reads (valid/total), valid rate: {:.2} %.", valid, total, valid_rate);
     }
     // pub fn write_total_info(&self) {
@@ -87,6 +102,7 @@ impl CounterManager {
         let valid_reads = *self.counter.get("valid").unwrap_or(&0) as f64;
         let unkown_reads = *self.counter.get("unknown").unwrap_or(&0) as f64;
         let filtered_reads = *self.counter.get("filtered").unwrap_or(&0) as f64;
+        let fusion_reads = *self.counter.get("fusion").unwrap_or(&0) as f64;
 
         let valid_rate = if total_reads > 0.0 {
             valid_reads / total_reads * 100.0
@@ -103,14 +119,21 @@ impl CounterManager {
         } else {
             0.0
         };
+        let fusion_rate = if total_reads > 0.0 {
+            fusion_reads / total_reads * 100.0
+        } else {
+            0.0
+        };
 
         let mut file = File::create(Path::new(&self.outdir).join("total_info.tsv")).expect("fail to create total_info.tsv");
-        writeln!(file, "total\tfiltered\tfiltered_rate\tunkown\tunkown_rate\tvalid\tvalid_rate").expect("fail to write header");
+        writeln!(file, "total\tfiltered\tfiltered_rate\tfuison\tfusion_rate\tunkown\tunkown_rate\tvalid\tvalid_rate").expect("fail to write header");
 
-        writeln!(file, "{}\t{}\t{:.2}%\t{}\t{:.2}%\t{}\t{:.2}%", 
+        writeln!(file, "{}\t{}\t{:.2}%\t{}\t{}\t{}\t{:.2}%\t{}\t{:.2}%", 
             total_reads as u32, 
             filtered_reads as u32, 
             filtered_rate,
+            fusion_reads as u32,
+            fusion_rate,
             unkown_reads as u32,
             unkown_rate,
             valid_reads as u32, 
