@@ -128,7 +128,7 @@ impl CounterManager {
         let mut file = File::create(Path::new(&self.outdir).join("total_info.tsv")).expect("fail to create total_info.tsv");
         writeln!(file, "total\tfiltered\tfiltered_rate\tfuison\tfusion_rate\tunkown\tunkown_rate\tvalid\tvalid_rate").expect("fail to write header");
 
-        writeln!(file, "{}\t{}\t{:.2}%\t{}\t{}\t{}\t{:.2}%\t{}\t{:.2}%", 
+        writeln!(file, "{}\t{}\t{:.2}%\t{}\t{:.2}%\t{}\t{:.2}%\t{}\t{:.2}%", 
             total_reads as u32, 
             filtered_reads as u32, 
             filtered_rate,
