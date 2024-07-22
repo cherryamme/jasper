@@ -22,7 +22,7 @@ pub struct Args {
     #[arg(short, long, default_value = "outdir")]
     pub outdir: String,
     /// Number of threads
-    #[arg(short, long, default_value = "4")]
+    #[arg(short, long, default_value = "20")]
     pub threads: usize,
     /// filter read by min_length
     #[arg(short, long, default_value = "100")]
@@ -40,7 +40,7 @@ pub struct Args {
     #[arg(long = "fe", default_value = "0.2")]
     pub fusion_errate: f32,
     /// split log nums per record
-    #[arg(short = 'n', long = "num", default_value = "100000")]
+    #[arg(short = 'n', long = "num", default_value = "500000")]
     pub log_num: u32,
     /// windows size to finder pattern <left,right>
     #[arg(short,long,value_delimiter = ',', default_value="400,400")]
