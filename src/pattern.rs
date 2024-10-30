@@ -214,7 +214,7 @@ pub fn get_patterns(inputargs: &Args) -> PatternArgs {
         patterndb.get_pattern(&inputargs.pattern_db_file, &inputargs.pattern_files[i]);
         let patternarg = PatternArg {
             pattern_db: patterndb,
-            pattern_pos: true,
+            pattern_pos: inputargs.pattern_pos,
             pattern_errate: patternargs.pattern_errate[i].clone(),
             pattern_maxdist: patternargs.pattern_maxdist[i].clone(),
             pattern_shift: patternargs.pattern_shift[i].clone(),
