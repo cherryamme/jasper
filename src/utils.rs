@@ -8,6 +8,10 @@ pub fn reverse_complement(seq: &str) -> String {
             'T' => 'A',
             'C' => 'G',
             'G' => 'C',
+            'a' => 't',
+            't' => 'a',
+            'c' => 'g',
+            'g' => 'c',
             _ => panic!("Invalid character: {}", c),
         };
     }
