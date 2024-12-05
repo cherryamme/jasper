@@ -1,10 +1,10 @@
 [package]
 name = "jasper"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 authors = ["jiangchen"]
-email = ["jiangchen2@genomics.cn"]
-description = "(2024-7-22) jasper: used to split long read fastq/gz data"
+email = ["jiangchen2@genomics.cn/cherryamme@qq.com"]
+description = "(2024-12-5) jasper: used to split long read fastq/gz data"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
