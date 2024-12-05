@@ -10,13 +10,18 @@ pub struct CounterManager {
     pub validname_counter: HashMap<String, HashMap<String, HashMap<String, u32>>>,
     pub validtype_counter: HashMap<String, HashMap<String, HashMap<String, u32>>>,
     outdir: String,
+    //NOTE 2024-12-5：add new fields to store before and after reads info
+    total_reads: u32,
+    total_bases: u32,
+    before_gc_content: f64,
+    valid_reads: u32,
+    valid_bases: u32,
+    after_gc_content: f64,
 }
 impl CounterManager {
     pub fn new(outdir: String) -> CounterManager {
 		info!("Creating counter manager, start counting...");
         let mut counter = HashMap::new();
-        counter.insert("valid".to_string(), 0);
-        counter.insert("total".to_string(), 0);
         counter.insert("filtered".to_string(), 0);
         counter.insert("unknown".to_string(), 0);
         counter.insert("fusion".to_string(), 0);
@@ -26,12 +31,21 @@ impl CounterManager {
             validtype_counter: HashMap::new(),
             // names: vec!["total".to_string(),"filtered".to_string(), "unknown".to_string(), "valid".to_string()],
             outdir: outdir,
+            total_reads: 0,
+            total_bases: 0,
+            before_gc_content: 0.5,
+            valid_reads: 0,
+            valid_bases: 0,
+            after_gc_content: 0.5,
         }
     }
     pub fn counter_read(&mut self, readinfo: &ReadInfo) {
-        *self.counter.entry("total".to_string()).or_insert(0) += 1;
+        self.total_reads += 1;
+        self.total_bases += readinfo.read_len as u32;
         *self.counter.entry(readinfo.read_type.clone()).or_insert(0) += 1;
         if readinfo.read_type == "valid" {
+            self.valid_reads += 1;
+            self.valid_bases += readinfo.read_len as u32;
             let primer: String = readinfo.match_names[0].clone();
             let index = readinfo.match_names[1].clone();
             let barcode = readinfo.match_names[2].clone();
@@ -45,6 +59,10 @@ impl CounterManager {
             *indextype_map.entry(primer_type).or_insert(0) += 1;
             *index_map.entry(primer).or_insert(0) += 1;
         }
+    }
+    pub fn filter_analysis(&self) {
+        //TODO use to analysis filter reads
+        ()
     }
     pub fn write_valid_info(&self) {
         for (barcode, index_map) in &self.validname_counter {
@@ -65,6 +83,10 @@ impl CounterManager {
                 }
             }
         }
+    }
+    pub fn write_filter_info(&self) {
+        // TODO use to write filter reads info
+        ()
     }
     pub fn info(&self){
         let valid = self.counter.get("valid").unwrap_or(&0);
@@ -98,7 +120,21 @@ impl CounterManager {
     //     }
     // }
     pub fn write_total_info(&self) {
-        let total_reads = *self.counter.get("total").unwrap_or(&0) as f64;
+        let total_reads = self.total_reads as f64;
+        let valid_reads = self.valid_reads as f64;
+        let total_bases = self.total_bases as f64;
+        let valid_bases = self.valid_bases as f64;
+
+        let before_read1_mean_length = if total_reads > 0.0 {
+            total_bases / total_reads
+        } else {
+            0.0
+        };
+        let after_read1_mean_length = if valid_reads > 0.0 {
+            valid_bases / valid_reads
+        } else {
+            0.0
+        };
         let valid_reads = *self.counter.get("valid").unwrap_or(&0) as f64;
         let unkown_reads = *self.counter.get("unknown").unwrap_or(&0) as f64;
         let filtered_reads = *self.counter.get("filtered").unwrap_or(&0) as f64;
@@ -126,17 +162,22 @@ impl CounterManager {
         };
 
         let mut file = File::create(Path::new(&self.outdir).join("total_info.tsv")).expect("fail to create total_info.tsv");
-        writeln!(file, "total\tfiltered\tfiltered_rate\tfuison\tfusion_rate\tunkown\tunkown_rate\tvalid\tvalid_rate").expect("fail to write header");
-
-        writeln!(file, "{}\t{}\t{:.2}%\t{}\t{:.2}%\t{}\t{:.2}%\t{}\t{:.2}%", 
+        writeln!(file, "total\ttotal_bases\tbefore_read1_mean_length\tafter_read1_mean_length\tbefore_gc_content\tafter_gc_content\tfiltered\tfiltered_rate\tfuison\tfusion_rate\tunkown\tunkown_rate\tvalid_reads\tvalid_bases\tvalid_rate").expect("fail to write header");
+        writeln!(file, "{}\t{}\t{:.1}\t{:.1}\t{:.1}\t{:.1}\t{}\t{:.2}\t{}\t{:.2}\t{}\t{:.2}\t{}\t{}\t{:.2}", 
             total_reads as u32, 
-            filtered_reads as u32, 
+            total_bases as u32, 
+            before_read1_mean_length,
+            after_read1_mean_length,
+            self.before_gc_content,
+            self.after_gc_content,
+            filtered_reads as u32,
             filtered_rate,
             fusion_reads as u32,
             fusion_rate,
             unkown_reads as u32,
             unkown_rate,
             valid_reads as u32, 
+            valid_bases as u32, 
             valid_rate, 
         ).expect("fail to write total_info");
     }
