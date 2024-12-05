@@ -3,7 +3,9 @@ use log::info;
 use std::collections::HashMap;
 use crate::args::Args;
 use crate::utils::reverse_complement;
-
+use age::secrecy::SecretString;
+use std::fs::File;
+use std::io::{Read, Write};
 
 #[derive(Debug,Clone)]
 pub struct PatternArgs {
@@ -63,6 +65,25 @@ pub struct PatternArg {
     pub pattern_shift: usize
 }
 
+pub fn encrypt_pattern_db(file: &str, passphrase: &str) {
+    // Read the file content
+    let mut f = File::open(file).expect(&format!("no such file ({}) found", file));
+    let mut content = Vec::new();
+    f.read_to_end(&mut content).unwrap();
+
+    // Encrypt the content
+    let passphrase = SecretString::from(passphrase.to_owned());
+    let recipient = age::scrypt::Recipient::new(passphrase.clone());
+    let encrypted_data = age::encrypt(&recipient, &content).unwrap();
+
+    // Write the encrypted content to a new file with .age suffix
+    let output_file = format!("{}.safe", file);
+    let mut out = File::create(&output_file).unwrap();
+    out.write_all(&encrypted_data).unwrap();
+    info!("Encrypted pattern db file saved to {}", output_file);
+}
+
+
 
 #[derive(Debug,Clone)]
 pub struct PatternDB {
@@ -81,28 +102,42 @@ impl PatternDB {
         }
     }
     pub fn get_pattern(&mut self, pattern_db_file: &String, pattern_file: &String){
-        let pattern_db = self.loading_pattern_db(pattern_db_file);
+        let pattern_db = self.loading_pattern_db(pattern_db_file,"666666");
         self.loading_pattern(
             pattern_file,
             pattern_db,
         );
     }
-    fn loading_pattern_db(&self, file: &str) -> HashMap<String, String> {
-        //loading pattern db file
+    fn loading_pattern_db(&self, file: &str, passphrase: &str) -> HashMap<String, String> {
         let mut pattern_db = HashMap::new();
+        let mut content = Vec::new();
+
+        if file.ends_with(".safe") {
+            // Decrypt the file
+            let passphrase = SecretString::from(passphrase.to_owned());
+            let identity = age::scrypt::Identity::new(passphrase);
+            let mut encrypted_file = File::open(file).expect(&format!("no such file({}) found", file));
+            encrypted_file.read_to_end(&mut content).unwrap();
+            let decrypted_data = age::decrypt(&identity, &content[..]).unwrap();
+            content = decrypted_data;
+        } else {
+            // Read the file directly
+            let mut f = File::open(file).expect(&format!("no such file({}) found", file));
+            f.read_to_end(&mut content).unwrap();
+        }
+
+        let cursor = std::io::Cursor::new(content);
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(false)
             .delimiter(b'\t')
-            .from_path(file)
-            .expect(&format!("no such file({}) found", file));
-        // info!("loading pattern db file success({})...", file);
+            .from_reader(cursor);
+
         for result in rdr.records() {
             let recored = result.unwrap();
             let name = &recored[0];
             let seq = &recored[1];
             pattern_db.insert(name.to_string(), seq.to_string());
         }
-        // debug!("pattern_db is {:?}", pattern_db);
         return pattern_db;
     }
     fn loading_pattern(&mut self, file: &str, pattern_db: HashMap<String, String>){
@@ -201,17 +236,17 @@ pub fn get_pattern(&mut self, pattern_db_file: &String, pattern_file: &String){
 }
 
 pub fn get_patterns(inputargs: &Args) -> PatternArgs {
-    info!("loading pattern db file({})...", &inputargs.pattern_db_file);
+    info!("loading pattern db file({})...", inputargs.pattern_db_file.as_ref().unwrap());
     let mut patternargs = PatternArgs::new(inputargs);
 
     let mut fusion_db = FusionDB::new();
     if &inputargs.fusion_file != "" {
-        fusion_db.get_pattern(&inputargs.pattern_db_file, &inputargs.fusion_file);
+        fusion_db.get_pattern(&inputargs.pattern_db_file.as_ref().unwrap(), &inputargs.fusion_file);
         patternargs.fusion_db = fusion_db;
     }
-    for i in 0..inputargs.pattern_files.len() {
+    for i in 0..inputargs.pattern_files.as_ref().unwrap().len() {
         let mut patterndb = PatternDB::new();
-        patterndb.get_pattern(&inputargs.pattern_db_file, &inputargs.pattern_files[i]);
+        patterndb.get_pattern(&inputargs.pattern_db_file.as_ref().unwrap(), &inputargs.pattern_files.as_ref().unwrap()[i]);
         let patternarg = PatternArg {
             pattern_db: patterndb,
             pattern_pos: inputargs.pattern_pos,

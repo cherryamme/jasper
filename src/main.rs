@@ -14,8 +14,17 @@ fn main() {
     std::env::set_var("RUST_LOG", "info");
     pretty_env_logger::init();
     let comands: Vec<String> = std::env::args().collect();
-    let args = args::Args::parse();
     info!("Run Command: {:?}", comands);
+    let args = args::Args::parse();
+    if let Some(command) = args.command {
+        match command {
+            args::Commands::Encrypt { file } => {
+                pattern::encrypt_pattern_db(&file, "666666");
+                return;
+            }
+            // Handle other subcommands if any
+        }
+    }
     // debug!("{:?}", args);
     let search_patterns = pattern::get_patterns(&args);
     // debug!("{:?}", search_patterns);

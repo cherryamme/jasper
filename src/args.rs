@@ -1,5 +1,6 @@
-use clap::Parser;
 use clap::builder::styling::{AnsiColor, Effects, Styles};
+use clap::{Parser, Subcommand};
+
 
 fn styles() -> Styles {
     Styles::styled()
@@ -10,11 +11,15 @@ fn styles() -> Styles {
 }
 
 #[derive(Parser, Debug, Clone)]
-#[command(version, author, about, long_about = None, styles = styles())]
 #[command(
-    help_template = "{usage-heading} {usage} \nVersion: {version} {about-section}Author:{author} Email:jiancghen2@genomics.cn\n {all-args} {tab}"
+    help_template = "{usage-heading} {usage} \nVersion: {version} {about-section}Author:{author} Email:jiancghen2@genomics.cn/cherryamme@qq.com\n {all-args} {tab}"
 )]
+#[command(version, author, about, long_about = None, styles = styles(), subcommand_negates_reqs = true, args_conflicts_with_subcommands = true)]
 pub struct Args {
+
+    #[command(subcommand)]
+    pub command: Option<Commands>,
+
     /// The path of input file
     #[arg(short, long, num_args = 1..,value_delimiter = ' ')]
     pub inputs: Vec<String>,
@@ -28,11 +33,11 @@ pub struct Args {
     #[arg(short, long, default_value = "100")]
     pub min_length: usize,
     /// pattern_files for split
-	#[arg(short,long, required = true, num_args = 1..,value_delimiter = ' ')]
-	pub pattern_files: Vec<String>,
+	#[arg(short,long, required = true, num_args = 1..,value_delimiter = ' ', required = true)]
+	pub pattern_files: Option<Vec<String>>,
     /// pattern_db_file for split
-	#[arg(short = 'd', long = "db")]
-    pub pattern_db_file: String,
+	#[arg(short = 'd', long = "db", required = true)]
+    pub pattern_db_file: Option<String>,
     /// fusion file to detect fusion
     #[arg(short = 'f', long = "fusion", default_value= "")]
     pub fusion_file: String,
@@ -69,6 +74,19 @@ pub struct Args {
     /// set record id sep delimiter.
     #[arg(long = "id_sep", default_value="%")]
     pub id_sep: String,
+
+
+
+
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum Commands {
+    /// Encrypt the database file
+    Encrypt {
+        /// The database file to encrypt
+        file: String,
+    },
 }
 
 fn errrate_validator(input: &str) -> Result<(f32,f32), String> {

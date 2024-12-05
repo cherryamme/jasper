@@ -60,10 +60,10 @@ impl CounterManager {
             *index_map.entry(primer).or_insert(0) += 1;
         }
     }
-    pub fn filter_analysis(&self) {
-        //TODO use to analysis filter reads
-        ()
-    }
+    // pub fn filter_analysis(&self) {
+    //     //TODO use to analysis filter reads
+    //     ()
+    // }
     pub fn write_valid_info(&self) {
         for (barcode, index_map) in &self.validname_counter {
             let mut file = File::create(Path::new(&self.outdir).join(format!("{}_validname.tsv",barcode))).expect("fail to create valid_info.tsv");
@@ -84,33 +84,33 @@ impl CounterManager {
             }
         }
     }
-    pub fn write_filter_info(&self) {
-        // TODO use to write filter reads info
-        ()
-    }
+    // pub fn write_filter_info(&self) {
+    //     // TODO use to write filter reads info
+    //     ()
+    // }
     pub fn info(&self){
-        let valid = self.counter.get("valid").unwrap_or(&0);
-        let total = self.counter.get("total").unwrap_or(&0);
+        let valid_reads = self.valid_reads as f64;
+        let total_reads = self.total_reads as f64;
         let fusion = self.counter.get("fusion").unwrap_or(&0);
         let filterd = self.counter.get("filtered").unwrap_or(&0);
-        let valid_rate = if *total > 0 {
-            100 * *valid / *total
+        let valid_rate = if total_reads > 0.0 {
+            100.0 * valid_reads / total_reads
         } else {
-            0
+            0.0
         };
-        let fusion_rate = if *total > 0 {
-            100 * *fusion / *total
+        let filterd_rate = if total_reads > 0.0 {
+            100.0 * *filterd as f64 / total_reads
         } else {
-            0
+            0.0
         };
-        let filterd_rate = if *total > 0 {
-            100 * *filterd / *total
+        let fusion_rate = if total_reads > 0.0 {
+            100.0 * *fusion as f64 / total_reads
         } else {
-            0
+            0.0
         };
-        info!("process {}/{} reads (filtered/total), filtered rate: {:.2} %.", filterd, total, filterd_rate);
-        info!("process {}/{} reads (fusion/total), fusion rate: {:.2} %.", fusion, total, fusion_rate);
-        info!("process {}/{} reads (valid/total), valid rate: {:.2} %.", valid, total, valid_rate);
+        info!("process {}/{} reads (filtered/total), filtered rate: {:.2} %.", filterd, total_reads, filterd_rate);
+        info!("process {}/{} reads (fusion/total), fusion rate: {:.2} %.", fusion, total_reads, fusion_rate);
+        info!("process {}/{} reads (valid/total), valid rate: {:.2} %.", valid_reads, total_reads, valid_rate);
     }
     // pub fn write_total_info(&self) {
     //     let mut file = File::create(Path::new(&self.outdir).join("total_info.tsv")).expect("fail to create total_info.tsv");

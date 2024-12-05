@@ -17,9 +17,8 @@ zcat *.fastq.gz | jasper -p pattern1.list -d pattern.db
 # yt cluster command test
 name=TB2000771F_jasper_err0.15_0.2_t10
 file='/home/long_read/LRS/data/LRS_MTB/2024-3-8-MTB_p2/output_data/TB2000771F-202403071104161_read.fq.gz'
-outdir=/home/long_read/LRS/data/LRS_MTB/2024-3-8-MTB_p2/$name
 
-/home/long_read/LRS/software/jasper/jasper -i $file -t 10 -m 100 -e 0.15,0.2 -p /home/long_read/LRS/software/jasper/example/cyclone_barcode.list -o $outdir
+jasper -i $file -t 10 -m 100 -e 0.15,0.2 -p /home/long_read/LRS/software/jasper/example/cyclone_barcode.list -o $name
 
 ```
 
@@ -43,7 +42,14 @@ outdir=/home/long_read/LRS/data/LRS_MTB/2024-3-8-MTB_p2/$name
 
 
 
+# suppot encryped pattern_db
 
+```shell
+
+jasper encrypt pattern.db
+# then you will get pattern.db.safe, and you can use it as normal pattern.db
+
+```
 
 ## build
 
