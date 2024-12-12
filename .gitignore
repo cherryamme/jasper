@@ -1,2 +1,7 @@
 /target
 /outdir
+benchmark
+cyclone_data
+barcod-citrus_v1.0.0
+*.gz
+test
