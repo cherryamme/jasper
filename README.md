@@ -8,6 +8,7 @@
 - **Adapter Removal**: Detects and removes adapter and linker sequences from reads, improving the accuracy of alignment and variant calling.
 - **Primer Splitting**: Identifies and separates reads based on primer sequences, facilitating targeted sequencing analyses and simplifying downstream processing.
 - **Abnormal Sequence Processing**: Handles sequences with unexpected patterns or anomalies, providing options for correction or exclusion to maintain data integrity.
+
 jasper supports multi-threading for enhanced performance on large datasets and offers flexible options for error rates, pattern matching modes (single or dual), and sequence trimming. It also supports continuous splitting with multiple pattern files, recognizes multiple pattern positions for splitting, and provides encrypted pattern databases for secure data handling.
 
 ## Features
